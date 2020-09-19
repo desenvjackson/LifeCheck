@@ -20,7 +20,8 @@ import {
     ActivityIndicator,
     Alert,
     StatusBar,
-    ScrollView
+    ScrollView,
+    Image
 } from 'react-native';
 import { Card } from 'react-native-elements';
 import { BleManager } from 'react-native-ble-plx';
@@ -47,6 +48,8 @@ interface State {
     loading: boolean,
     scanning: boolean,
     erro: boolean,
+    conectando: any,
+    corIconBluetooth: any,
 }
 
 const manager = new BleManager();
@@ -54,69 +57,69 @@ const manager = new BleManager();
 
 async function getBluetoothScanPermission() {
     const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-      {
-        title: 'Bluetooth Permission',
-        message:
-          'In the next dialogue, Android will ask for permission for this ' +
-          'App to access your location. This is needed for being able to ' +
-          'use Bluetooth to scan your environment for peripherals.',
-        buttonPositive: 'OK'
-      },
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        {
+            title: 'Bluetooth Permission',
+            message:
+                'In the next dialogue, Android will ask for permission for this ' +
+                'App to access your location. This is needed for being able to ' +
+                'use Bluetooth to scan your environment for peripherals.',
+            buttonPositive: 'OK'
+        },
     )
     if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-      console.log('BleManager.scan will *NOT* detect any peripherals! = NOT')
+        console.log('BleManager.scan will *NOT* detect any peripherals! = NOT')
     } else {
-      console.log('BleManager.scan will detect any peripherals! = OK')
+        console.log('BleManager.scan will detect any peripherals! = OK')
     }
-  }
-  
-  
-  async function requestLocationPermission() {
+}
+
+
+async function requestLocationPermission() {
     try {
-      let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Permissão para usar a localização',
-          message: 'O aplicativo precisa de permissão para utilizar a sua localização',
-          buttonNegative: 'Cancelar',
-          buttonPositive: 'OK',
-        });
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
-      } else {
-        console.log("PermissionsAndroid.RESULTS.GRANTED = NOT PERMISSION");
-      }
+        let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+                title: 'Permissão para usar a localização',
+                message: 'O aplicativo precisa de permissão para utilizar a sua localização',
+                buttonNegative: 'Cancelar',
+                buttonPositive: 'OK',
+            });
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
+        } else {
+            console.log("PermissionsAndroid.RESULTS.GRANTED = NOT PERMISSION");
+        }
     } catch (error) {
-      console.log(error);
+        console.log(error);
     }
-  
+
     if (Platform.OS === 'android')
-      LocationServicesDialogBox.checkLocationServicesIsEnabled({
-        message: "<h2>Use Location?</h2> \
+        LocationServicesDialogBox.checkLocationServicesIsEnabled({
+            message: "<h2>Use Location?</h2> \
                               This app wants to change your device settings:<br/><br/>\
                               Use GPS for location<br/><br/>",
-        ok: "YES",
-        cancel: "NO"
-      }).then(() => {
-        // locationTracking(dispatch, getState, geolocationSettings)
-      })
-  
-  }
-  
-  async function onBluetooth() {
-  
+            ok: "YES",
+            cancel: "NO"
+        }).then(() => {
+            // locationTracking(dispatch, getState, geolocationSettings)
+        })
+
+}
+
+async function onBluetooth() {
+
     BleManagerX.enableBluetooth()
-      .then(() => {
-        // Success code
-        console.log("The bluetooth is already enabled or the user confirm = OK");
-      })
-      .catch((error) => {
-        // Failure code
-        console.log("The user refuse to enable bluetooth = NOT");
-      });
-  
-  
-  }
+        .then(() => {
+            // Success code
+            console.log("The bluetooth is already enabled or the user confirm = OK");
+        })
+        .catch((error) => {
+            // Failure code
+            console.log("The user refuse to enable bluetooth = NOT");
+        });
+
+
+}
 
 
 export default class HomeScreen extends PureComponent<Props, State> {
@@ -134,32 +137,34 @@ export default class HomeScreen extends PureComponent<Props, State> {
             dadosservices: [],
             peripherals: new Map(),
             dadosservicesMAP: new Map(),
-            loading: false,
+            loading: true,
             scanning: false,
             erro: false,
+            conectando: '',
+            corIconBluetooth: 'navy', 
         };
     }
 
     componentDidMount = async () => {
 
-    console.log("check bluetooth access permission...")
-    await onBluetooth()
+        console.log("check bluetooth access permission...")
+        await onBluetooth()
 
-    console.log("check getBluetoothScanPermission access permission...")
-    await getBluetoothScanPermission()
+        console.log("check getBluetoothScanPermission access permission...")
+        await getBluetoothScanPermission()
 
-    console.log("check requestLocationPermission access permission...")
-    await requestLocationPermission()
+        console.log("check requestLocationPermission access permission...")
+        await requestLocationPermission()
 
-    /*
-    BleManager.scan([], 30, true).then((results) => {
-      console.log('Scanning...');
-      this.setState({
-        scanning: true
-      });
-      console.log("scanning... = OK")
-    });
-    */
+        /*
+        BleManager.scan([], 30, true).then((results) => {
+          console.log('Scanning...');
+          this.setState({
+            scanning: true
+          });
+          console.log("scanning... = OK")
+        });
+        */
     }
 
 
@@ -175,7 +180,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     async scanAndConnect() {
 
-       await this.setState({ loading: true, scanning: true, dadosservicesMAP: new Map() , erro: false, dadosservices: [], dados: [], peripherals: new Map()  });
+        await this.setState({
+            loading: true, scanning: true, dadosservicesMAP: new Map(), erro: false, dadosservices: [], dados: [], peripherals: new Map(),
+            conectando: "Conectando ao seu INSTANT CHECK... " , corIconBluetooth: 'navy'
+        });
 
         try {
             var peripherals = this.state.peripherals;
@@ -212,6 +220,13 @@ export default class HomeScreen extends PureComponent<Props, State> {
             // some error handling
             console.log("scanAndConnect" + err);
         }
+
+
+        setTimeout(() => {
+            this.setState({ conectando: "Conectado! Bem vindo." , corIconBluetooth: 'green'  });                
+        }, 2000);
+    
+            
     }
 
 
@@ -228,7 +243,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 })
                 .catch((error) => {
                     // Handle errors                    
-                    console.log ( "deviceconnect : " + error  );
+                    console.log("deviceconnect : " + error);
                     this.setState({ erro: true, loading: false });
                 });
         } catch (err) {
@@ -251,7 +266,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
 
     async printAllServices(device) {
-        await this.setState({ loading: true, scanning: true, dadosservicesMAP: new Map() , erro: false, dadosservices: [], dados: []  });
+        await this.setState({ loading: true, scanning: true, dadosservicesMAP: new Map(), erro: false, dadosservices: [], dados: [] });
 
         const services = await device.services();
         try {
@@ -307,38 +322,31 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
         } catch (err) {
             // some error handling
-            console.log ( "this.result.value" + err );
+            console.log("this.result.value" + err);
         }
     }
 
 
-    retrieveConnected = async (deviceId = null) => {      
-            if (!deviceId) return false;
-            const isConnected = await manager.isDeviceConnected(deviceId);
-            if (isConnected) {
-              console.log(`Device ${deviceId} is connected!`);
-            } else {
-              console.log(`Device ${deviceId} is NOT connected!`);
-            }
-            return isConnected;       
+    retrieveConnected = async (deviceId = null) => {
+        if (!deviceId) return false;
+        const isConnected = await manager.isDeviceConnected(deviceId);
+        if (isConnected) {
+            console.log(`Device ${deviceId} is connected!`);
+        } else {
+            console.log(`Device ${deviceId} is NOT connected!`);
+        }
+        return isConnected;
     }
 
 
-    
+
 
 
     render() {
-        const btnScanTitle = 'Scan Bluetooth (' + (this.state.scanning ? 'on' : 'off') + ')';
+        const btnScanTitle = 'Conectar Dispositivo (' + (this.state.scanning ? 'on' : 'off') + ')';
 
         return (
-
-            <View
-                style={{
-                    paddingTop: 40,
-                    ...StyleSheet.absoluteFillObject,
-                }}
-            //style={StyleSheet.absoluteFillObject}
-            >
+            <>
 
                 <StatusBar
                     animated={true}
@@ -347,164 +355,91 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     backgroundColor="gray"
                 />
 
-                <View style={{ margin: 10 }}>
-                    <Button title={btnScanTitle} onPress={() => this.scanAndConnect()} />
-                </View>
+                <View
+                    style={{
+                        paddingTop: 25
+                    }}
 
-                {/*
-                <View style={{ margin: 10 }}>
-                    <Button title="Recuperar periféricos conectados" onPress={() => this.retrieveConnected()} />
-                </View>
-                */}
-
-
-                {this.state.loading &&
-                    <ActivityIndicator size={"small"} color="black" style={{ marginTop: 10 }} />
-                }
-
-                <ScrollView>
-                    <View style={{ width: "100%", paddingTop: 20, paddingBottom: 10 }}  > 
-
-                        {this.state.dados.map((item, index) => {
-                            return (
-                                <View>
-                                    <Grid>
-                                        <TouchableOpacity
-                                            key={item.id}
-                                            style={{
-                                                borderWidth: 3,
-                                                borderColor: "white",
-                                                borderRadius: 20,
-                                                margin: 10,
-                                                padding: 15,
-                                                paddingBottom: 30,
-                                                flex: 1,
-                                            }}
-                                        >
-                                            <>
-                                                <Col style={{ flexDirection: 'row', paddingBottom: 5, flex: 1, }}>
-                                                    <Text style={{ fontSize: 15, paddingBottom: 5, paddingLeft: 1, fontWeight: 'bold' }} >Descrição: {item.name}</Text>
-                                                </Col>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }}> RSSI: {item.rssi} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }}> ID:  {item.id} </Text>
-                                                </Row>
-
-                                                <TouchableOpacity
-                                                    key={item.id}
-                                                    onPress={() => this.deviceconnect(item)}
-                                                    style={{ justifyContent: 'flex-end', flexDirection: "row", alignItems: "flex-end" }}>
-
-                                                    {item.connected ?
-                                                        <FontAwesome5 name="check" size={25} color='green'></FontAwesome5> :
-                                                        <FontAwesome5 name="bluetooth" size={25} color='navy'></FontAwesome5>
-                                                    }
-
-                                                    <Text style={{ color: 'gray', fontFamily: '', fontWeight: '400', textAlign: 'right', paddingLeft: 4 }}>
-                                                        {item.connected ? 'Desconectar' : 'Conectar'}
-                                                    </Text>
-
-                                                </TouchableOpacity>
-
-                                            </>
-                                        </TouchableOpacity>
-                                    </Grid>
-                                </View>
-                            );
-                        })}
-
-                        {this.state.erro &&
-                            <View style={{ margin: 10 }}>
-                                 <Text style={{ fontSize: 15, paddingBottom: 5, paddingLeft: 1, fontWeight: 'bold' }} > Sem dados. </Text>
-                            </View>
-                        }
-
-                        {this.state.dadosservices.map((item, index) => {
-
-                            <StatusBar
-                                animated={true}
-                                translucent={true}
-                                barStyle={'light-content'}
-                                backgroundColor="gray"
+                >
+                    <View style={styles.cardBorderPersonal}>
+                        <View style={{ height: 0 }}>
+                            <Image
+                                style={styles.tinyLogo}
+                                source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/alas.png' }}
                             />
+                        </View>
+                        <View style={{ paddingLeft: 100, paddingTop: 12 }}  >
+                            <Text style={styles.titleText} >Alas Jackson , bem vindo!  </Text>
+                            <View style={{ flexDirection: "row" }}>
+                                <Text style={styles.textTextDescricao} >  </Text>
+                            </View>
+                        </View>
 
-                            return (
-                                <View>
-                                    <Grid>
-                                        <TouchableOpacity
-                                            key={item.id}
-                                            style={{
-                                                borderWidth: 3,
-                                                borderColor: "white",
-                                                borderRadius: 20,
-                                                margin: 10,
-                                                padding: 15,
-                                                paddingBottom: 30,
-                                                flex: 1,
-                                            }}
-                                        >
-                                            <>
-                                                <Col style={{ flexDirection: 'row', paddingBottom: 5, flex: 1, }}>
-                                                    <Text style={{ fontSize: 15, paddingBottom: 5, paddingLeft: 1, fontWeight: 'bold' }} >ID: {item.id}</Text>
-                                                </Col>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> serviceUUID: </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} >  {item.serviceUUID} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> UUID: </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {item.uuid} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> isNotifiable (é notificável):   </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.isNotifiable)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> isNotifying (está notificando):  </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.isNotifying)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> isReadable (é legível): </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.isReadable)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> é gravável com resposta:  </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.isWritableWithResponse)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> é gravável sem resposta:  </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.isWritableWithoutResponse)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> serviceID:  </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.serviceID)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> isIndicatable (é indicável): </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} > {String(item.isIndicatable)} </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12, fontWeight: 'bold' }}> value (valor): </Text>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} >  {String(base64.decode(item.value))}  </Text>
-                                                </Row>
-                                                <Row>
-                                                    <Text style={{ textAlign: 'justify', fontSize: 12 }} >  {item.value}  </Text>
-                                                </Row>
-                                            </>
-                                        </TouchableOpacity>
-                                    </Grid>
-                                </View>
-                            );
-                        })}
+
+
+                        <View style={{ paddingLeft: 0 }}  >
+                            <Text style={styles.titleText} > </Text>
+                            <View style={{ flexDirection: "row" }}>
+                                <Text style={styles.textTextDescricao} >Na guia  <FontAwesome5 name="file-medical-alt" color="navy" size={12}></FontAwesome5> Medições,
+                                veja suas condições atuais.
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={{ paddingLeft: 0 }}  >
+                            <Text style={styles.titleText} > </Text>
+                            <View style={{ flexDirection: "row" }}>
+                                <Text style={styles.textTextDescricao} >Na guia  <FontAwesome5 name="bell" color="navy" size={12}></FontAwesome5> Alertas,
+                                veja os avisos sobre suas condições.
+                                </Text>
+                            </View>
+                        </View>
+
+
+                        <View style={{ paddingLeft: 0 }}  >
+                            <Text style={styles.titleText} > </Text>
+                            <View style={{ flexDirection: "row" }}>
+                                <Text style={styles.textTextDescricao} >Na guia  <FontAwesome5 name="cogs" color="navy" size={12}></FontAwesome5> Opções,
+                                configure o Instant Check conforme suas necessidades.
+                                </Text>
+                            </View>
+                        </View>
 
 
                     </View>
-                </ScrollView>
 
-            </View>
 
+
+
+                    <TouchableOpacity onPress={() => this.scanAndConnect()} >
+                        <View style={styles.cardBorder}>
+                            <View style={{ height: 0 }}>
+                                <FontAwesome5 name={"bluetooth"} size={40} color={this.state.corIconBluetooth} />
+                            </View>
+                            <View style={{ paddingLeft: "15%" }}  >
+                                <Text style={styles.titleText} > Instant Check </Text>
+                                <View style={{ flexDirection: "row" }}>
+                                    <Text style={styles.textTextDescricao} > Clique para conectar o dispositivo </Text>
+                                </View>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+
+                    
+                    {this.state.loading &&
+                                <View style={{ paddingLeft: 50, paddingTop: -80 }}  >
+                                    <Text style={styles.titleText} > </Text>
+                                    <View style={{ flexDirection: "row" }}>
+                                        <Text style={styles.textTextDescricao} >{this.state.conectando}
+                                        </Text>
+                                    </View>
+                                </View>
+                            }
+
+
+
+                </View>
+            </>
         );
     }
 }
@@ -524,4 +459,44 @@ const styles = StyleSheet.create({
     row: {
         margin: 10
     },
+    textText: {
+        fontSize: 18,
+        color: "red",
+        fontWeight: "bold"
+    },
+    textTextDescricao: {
+        fontSize: 14,
+        color: "gray",
+        marginTop: "2%"
+    },
+    titleText: {
+        fontSize: 18,
+        fontWeight: "bold"
+    },
+    cardBorder: {
+        borderTopRightRadius: 80,
+        borderBottomRightRadius: 80,
+        backgroundColor: 'white',
+        padding: 30,
+        margin: 10,
+        borderColor: 'black',
+        borderWidth: 1,
+    },
+    cardBorderPersonal: {
+        borderTopRightRadius: 30,
+        borderTopLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        borderBottomLeftRadius: 30,
+        backgroundColor: 'white',
+        //flex: 1,
+        padding: 30,
+        margin: 10,
+        borderColor: 'black',
+        borderWidth: 1,
+    },
+    tinyLogo: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+    }
 });

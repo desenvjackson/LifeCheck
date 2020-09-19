@@ -5,7 +5,7 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 
 
-export default class telemetria extends Component {
+export default class alertas extends Component {
 
   constructor() {
     super()
@@ -65,68 +65,23 @@ export default class telemetria extends Component {
                   <View style={{ paddingLeft:"15%" }}  >
                     <Text style={styles.titleText} >  Frequência cardíaca </Text>
                     <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >  89 </Text> 
+                      <Text style={styles.textText} >  70 </Text> 
                       <Text style={styles.textTextDescricao}> bpm </Text>
+                      <Text style={styles.textTextDescricao}> - NORMAL </Text>
                     </View>
                   </View>
         </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={this.carregaTelemetria}>
+         <TouchableOpacity onPress={this.carregaTelemetria}>
         <View style={styles.cardBorder}>
                   <View style={{ height:0 }}>
-                        <FontAwesome5 name={"stethoscope"} size={40} color="blue" />
+                        <FontAwesome5 name={"thermometer-half"} size={40} color="red" />
                   </View>
                   <View style={{ paddingLeft:"15%" }}  >
-                    <Text style={styles.titleText} >  Pressão arterial </Text>
+            <Text style={styles.titleText} >Temperatura corporal  {'\n'} </Text>
                     <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >  131/98 </Text> 
-                      <Text style={styles.textTextDescricao}> mmhg </Text>
-                    </View>
-                  </View>
-        </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={this.carregaTelemetria}>
-        <View style={styles.cardBorder}>
-                  <View style={{ height:0 }}>
-                        <FontAwesome5 name={"file-medical-alt"} size={40} color="black" />
-                  </View>
-                  <View style={{ paddingLeft:"15%" }}  >
-                    <Text style={styles.titleText} >  ECG </Text>
-                    <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >  Normal </Text> 
-                      <Text style={styles.textTextDescricao}>   </Text>
-                    </View>
-                  </View>
-        </View>
-        </TouchableOpacity>
- 
-        <TouchableOpacity onPress={this.carregaTelemetria}>
-        <View style={styles.cardBorder}>
-                  <View style={{ height:0 }}>
-                        <FontAwesome5 name={"tint"} size={40} color="gray" />
-                  </View>
-                  <View style={{ paddingLeft:"15%" }}  >
-                    <Text style={styles.titleText} >  Oxigênio </Text>
-                    <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >  90% </Text> 
-                      <Text style={styles.textTextDescricao}>   </Text>
-                    </View>
-                  </View>
-        </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={this.carregaTelemetria}>
-        <View style={styles.cardBorder}>
-                  <View style={{ height:0 }}>
-                        <FontAwesome5 name={"thermometer-half"} size={40} color="green" />
-                  </View>
-                  <View style={{ paddingLeft:"15%" }}  >
-                    <Text style={styles.titleText} >  Temperatura corporal </Text>
-                    <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >  35.7 ªc </Text> 
-                      <Text style={styles.textTextDescricao}>   </Text>
+                      <Text style={styles.textText} >Sua temperatura corporal passou dos 38.2 °C  {'\n\n '}CUIDADO </Text>                       
                     </View>
                   </View>
         </View>

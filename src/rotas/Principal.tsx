@@ -9,6 +9,7 @@ import Scan from '../screens/Home/index';
 import Medicao from '../screens/operacoes/medicao';
 import Telemetria from '../screens/operacoes/telemetria';
 import Opcoes from '../screens/operacoes/opcoes';
+import Alertas from '../screens/operacoes/alertas';
 
 
 export default function cadastrodRoutes() {
@@ -38,12 +39,12 @@ export default function cadastrodRoutes() {
         >
 
             <Tab.Screen
-                name="Devices"
+                name="Home"
                 component={Scan}
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="bluetooth" style={{ paddingBottom: 30 }} size={25} color="navy"></FontAwesome5>
+                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={25} color="navy"></FontAwesome5>
                     ),
                     unmountOnBlur: true
                 }}
@@ -63,7 +64,7 @@ export default function cadastrodRoutes() {
 
             <Tab.Screen
                 name="Alertas"
-                component={Medicao}
+                component={Alertas}
                 options={{
 
                     tabBarIcon: ({ }) => (
