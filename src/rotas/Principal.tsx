@@ -46,7 +46,7 @@ export default function cadastrodRoutes() {
                     tabBarIcon: ({ }) => (
                         <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={25} color="navy"></FontAwesome5>
                     ),
-                    unmountOnBlur: true
+                    unmountOnBlur: false
                 }}
             />
 
@@ -58,19 +58,19 @@ export default function cadastrodRoutes() {
                     tabBarIcon: ({ }) => (
                         <FontAwesome5 name="file-medical-alt" style={{ paddingBottom: 30 }} size={25} color="navy"></FontAwesome5>
                     ),
-                    unmountOnBlur: true
+                    unmountOnBlur: false
                 }}
             />
 
             <Tab.Screen
-                name="Alertas"
+                name="Idosos"
                 component={Alertas}
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="bell" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
+                        <FontAwesome5 name="hiking" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
                     ),
-                    unmountOnBlur: true
+                    unmountOnBlur: false
                 }}
             />
 
@@ -82,9 +82,11 @@ export default function cadastrodRoutes() {
                     tabBarIcon: ({ }) => (
                         <FontAwesome5 name="cogs" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
                     ),
-                    unmountOnBlur: true
+                    unmountOnBlur: false
                 }}
             />
+
+    
 
 
         </Tab.Navigator>

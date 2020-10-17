@@ -44,51 +44,7 @@ export default class alertas extends Component {
                 />
 
 
-      <ScrollView style={{ padding:10 }}
-          refreshControl={
-            <RefreshControl refreshing={this.state.refreshing} onRefresh={this.carregaTelemetria} />
-          }
-      
-      >    
 
-      <View style={{ padding: 10 }}>
-                {this.state.loading &&
-                    <ActivityIndicator size={"large"} color="#999999" style={{ marginTop: 9, justifyContent: "center" }} />
-                }            
-      </View>
- 
-      <TouchableOpacity onPress={this.carregaTelemetria}>
-        <View style={styles.cardBorder}>
-                  <View style={{ height:0 }}>
-                        <FontAwesome5 name={"heartbeat"} size={40} color="red" />
-                  </View>
-                  <View style={{ paddingLeft:"15%" }}  >
-                    <Text style={styles.titleText} >  Frequência cardíaca </Text>
-                    <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >  70 </Text> 
-                      <Text style={styles.textTextDescricao}> bpm </Text>
-                      <Text style={styles.textTextDescricao}> - NORMAL </Text>
-                    </View>
-                  </View>
-        </View>
-        </TouchableOpacity>
-
-         <TouchableOpacity onPress={this.carregaTelemetria}>
-        <View style={styles.cardBorder}>
-                  <View style={{ height:0 }}>
-                        <FontAwesome5 name={"thermometer-half"} size={40} color="red" />
-                  </View>
-                  <View style={{ paddingLeft:"15%" }}  >
-            <Text style={styles.titleText} >Temperatura corporal  {'\n'} </Text>
-                    <View style={{ flexDirection: "row" }}>
-                      <Text style={styles.textText} >Sua temperatura corporal passou dos 38.2 °C  {'\n\n '}CUIDADO </Text>                       
-                    </View>
-                  </View>
-        </View>
-        </TouchableOpacity>
-
-
-        </ScrollView>
 
       </>
     )

@@ -1,9 +1,10 @@
 import React, { PureComponent, Fragment, } from 'react';
-import { Switch, View, TouchableOpacity, ScrollView, Text, StatusBar, AsyncStorage, Button } from 'react-native';
+import { Switch, View, TouchableOpacity, ScrollView, Text, StatusBar, AsyncStorage, Button, Dimensions, StyleSheet, SectionList } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 //import Styles, { Variables } from '../../styles';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+const window = Dimensions.get('window');
 
 export default class OpcoesScreen extends PureComponent {
 
@@ -93,7 +94,8 @@ export default class OpcoesScreen extends PureComponent {
     render() {
 
         return (
-            <ScrollView style={{ paddingTop: 20 }}>
+            <>
+
                 <StatusBar
                     animated={true}
                     translucent={true}
@@ -101,120 +103,120 @@ export default class OpcoesScreen extends PureComponent {
                     backgroundColor={"gray"}
                 />
 
-                <View style={loginStyles.touchableOpacityCard}>
-                    <View style={{ paddingRight: 8 }}>
-                        <FontAwesome5 name="file-medical-alt" size={20} color="red"></FontAwesome5>
-                    </View>
-                    <Text>{this.state.switchValue ? 'Verificação automática - Ativado ' : 'Verificação automática - Desativado'}</Text>
-                    <Switch
-                        style={{ paddingBottom: 20 }}
-                        onValueChange={this.toggleSwitch}
-                        value={this.state.switchValue} />
-                </View>
+                <View
+                    style={{
+                        paddingTop: 1,
+                        backgroundColor: "white"
+                    }}
+
+                >
 
 
-                <TouchableOpacity onPress={this.ativaTime} style={loginStyles.touchableOpacityCard}>
-                    <View style={{ paddingRight: 8 }}>
-                        <FontAwesome5 name="calendar" size={20} color="black"></FontAwesome5>
-                    </View>
-                    <View>
-                        <DateTimePickerModal
-                            isVisible={this.state.isDatePickerVisible}
-                            mode="time"
-                            onConfirm={this.ativaTimeSalvaValor}
-                            onCancel={this.hideDatePicker}
-                            locale="en_GB" // Use "en_GB" here
-                            date={new Date()}
-                        />
-                    </View>
-                    <Text>Monitoramento: Inicio as 08hs Fim as 22hs. </Text>
-                </TouchableOpacity>
+                    <SectionList
+                        sections={[
+                            { title: '', data: [] }
+                        ]}
+                        renderItem={({ item }) =>
+                            <Text style={styles.sectionHeader}></Text>
+                        }
+                        renderSectionHeader={({ section }) =>
+                            <Text style={styles.sectionHeader}></Text>
+                        }
+                        keyExtractor={(item, index) => index}
+                    />
 
-                <TouchableOpacity onPress={this.telaAlerta} style={loginStyles.touchableOpacityCard}>
-                    <View style={{ paddingRight: 8 }}>
-                        <FontAwesome5 name="clock" size={20} color="black"></FontAwesome5>
-                    </View>
-                    <Text>Tempo de verificação: A cada 3 horas.</Text>
-                </TouchableOpacity>
 
-                <View style={loginStyles.touchableOpacityCard}>
-                    <View style={{ paddingRight: 8 }}>
-                        <FontAwesome5 name="bell" size={20} color="red"></FontAwesome5>
-                    </View>
-                    <Text>{this.state.switchValue2 ? 'Avisos automático - Ativado ' : 'Avisos automático- Desativado'}</Text>
-                    <Switch
-                        style={{ paddingBottom: 20 }}
-                        onValueChange={this.toggleSwitch2}
-                        value={this.state.switchValue2} />
-                </View>
 
-                <View style={{ marginTop: 13 , borderTopWidth: 0.5, borderTopColor: "gray" }}>
-
-                    <View style={loginStyles.touchableOpacityCard}>
-                        <View style={{ paddingRight: 8 }}>
-                            <FontAwesome5 name="sync" size={20} color="black"></FontAwesome5>
-                        </View>
-
-                        <Text>{this.state.switchValue1 ? 'Login automático - Ativado' : 'Login automático - Desativado'}</Text>
+                    <Text style={styles.sectionHeader}>GERENCIAR</Text>
+                    
+                    <View  style={{ flexDirection: "row", paddingLeft: 15, margin: 1 }}>
+                    <Text style={styles.item} > 
+                             <FontAwesome5 style={styles.item} name="file-medical-alt" size={20} color="red"> </FontAwesome5>
+                             {this.state.switchValue ? 'Verificação automática - Ativado ' : 'Verificação automática - Desativado'}
+                    </Text>        
                         <Switch
-                            style={{ paddingLeft: 15 }}
+                            style={{ paddingLeft: 10 }}
                             onValueChange={this.toggleSwitch1}
-                            value={this.state.switchValue1} />
+                            value={this.state.switchValue1} />                           
                     </View>
 
+
+                    <View  style={{ flexDirection: "row", paddingLeft: 15, margin: 1 }}>      
+                    <TouchableOpacity onPress={this.ativaTime}>                               
+                                <DateTimePickerModal
+                                    isVisible={this.state.isDatePickerVisible}
+                                    mode="time"
+                                    onConfirm={this.ativaTimeSalvaValor}
+                                    onCancel={this.hideDatePicker}
+                                    locale="en_GB" // Use "en_GB" here
+                                    date={new Date()}
+                                />
+                            <Text style={styles.item} > 
+                                <FontAwesome5 style={styles.item} name="calendar" size={20} color="black">  Monitoramento: Inicio as 08hs Fim as 22hs. 
+                                </FontAwesome5> 
+                                </Text>
+                        </TouchableOpacity>
+                    </View>
+
+
+                    <View style={{ flexDirection: "row", paddingLeft: 15, margin: 1 }}>   
+                    <TouchableOpacity onPress={this.telaAlerta}>                            
+                            <Text style={styles.item} >
+                                <FontAwesome5 style={styles.item}  name="clock" size={20} color="black"> Tempo de verificação: A cada 3 horas.
+                                </FontAwesome5> 
+                                </Text>
+                        </TouchableOpacity>
+                    </View>    
+
+
+                    <View  style={{ flexDirection: "row", paddingLeft: 15, margin: 1 }}>                               
+                            <Text style={styles.item} > 
+                                <FontAwesome5 name="bell" size={20} color="red"></FontAwesome5>
+                                {this.state.switchValue2 ? ' Avisos automático - Ativado ' : ' Avisos automático- Desativado'}</Text>
+                            <Switch
+                                style={{ paddingLeft: 33}}
+                                onValueChange={this.toggleSwitch2}
+                                value={this.state.switchValue2} />
+                    </View>   
+
+
+                    <Text style={styles.sectionHeader}>SEU APP</Text>
+
+                    <View  style={{ flexDirection: "row", paddingLeft: 15, margin: 1}}>   
                     <TouchableOpacity
+                                onPress={this.telaPerfil}
+                                style={styles.item}
+                            >                              
+                               <Text style={styles.item}>
+                                   <FontAwesome5 name="user-edit" size={20} color="black"></FontAwesome5> Editar  Perfil</Text>
+                            </TouchableOpacity>
+                    </View>   
 
-                        onPress={this.telaLogin} style={loginStyles.touchableOpacityCard}>
-
-                        <View style={{ paddingRight: 8 }}>
-                            <FontAwesome5 name="sign-out-alt" size={20} color="black"></FontAwesome5>
-                        </View>
-
-                        <Text>Desconectar</Text>
-
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={this.telaPerfil}
-                        style={loginStyles.touchableOpacityCard}
-                    >
-                        <View style={{ paddingRight: 8 }}>
-                            <FontAwesome5 name="user-edit" size={20} color="black"></FontAwesome5>
-                        </View>
-                        <Text>Editar  Perfil</Text>
-
-                    </TouchableOpacity>
+ 
 
                 </View>
-
-            </ScrollView>
-
+            </>
         );
     }
 }
+ 
 
-export const loginStyles = {
-
-    touchableOpacityCard: {
-        height: 49,
-        flex: 1,
-        alignItems: "center",
-        flexDirection: 'row',
-        marginTop: 15,
-        paddingLeft: 20,
-        paddingRight: 20,
+export const styles = StyleSheet.create({
+    sectionHeader: {
+        //padding: 30,
+        //margin: 10,
+        paddingTop: 3,
+        paddingLeft: 30,
+        //paddingRight: 10,
+        paddingBottom: 3,
+        fontSize: 16,
+        fontWeight: 'bold',
+        backgroundColor: 'rgba(247,247,247,1.0)',
+        textDecorationColor: 'gray',
     },
-    container: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: 'space-between',
-        flexDirection: 'row',
-        borderTopWidth: 2,
-        borderTopColor: "gray",
-        borderBottomWidth: 2,
-        borderBottomColor: "gray",
-        marginBottom: 4
-
-    }
-}
-
+    item: {
+        fontSize: 14,
+        margin: 15,
+    },
+ 
+});
