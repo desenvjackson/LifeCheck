@@ -44,19 +44,19 @@ export default function cadastrodRoutes() {
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={25} color="navy"></FontAwesome5>
+                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={25} color="red"></FontAwesome5>
                     ),
                     unmountOnBlur: false
                 }}
             />
 
             <Tab.Screen
-                name="Medições"
+                name="Histórico"
                 component={Telemetria}
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="file-medical-alt" style={{ paddingBottom: 30 }} size={25} color="navy"></FontAwesome5>
+                        <FontAwesome5 name="history" style={{ paddingBottom: 30 }} size={25} color="black"></FontAwesome5>
                     ),
                     unmountOnBlur: false
                 }}
@@ -80,7 +80,7 @@ export default function cadastrodRoutes() {
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="cogs" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
+                        <FontAwesome5 name="user-cog" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
                     ),
                     unmountOnBlur: false
                 }}

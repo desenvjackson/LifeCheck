@@ -152,7 +152,7 @@ export default class OpcoesScreen extends PureComponent {
                                     date={new Date()}
                                 />
                             <Text style={styles.item} > 
-                                <FontAwesome5 style={styles.item} name="calendar" size={20} color="black">  Monitoramento: Inicio as 08hs Fim as 22hs. 
+                                <FontAwesome5 style={styles.item} name="calendar" size={20} color="black">  Monitoramento: Inicio: 08hs Fim: 22hs. 
                                 </FontAwesome5> 
                                 </Text>
                         </TouchableOpacity>

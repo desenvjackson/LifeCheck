@@ -4,15 +4,9 @@ import {
     StyleSheet,
     Text,
     View,
-    NativeEventEmitter,
-    NativeModules,
     Platform,
     PermissionsAndroid,
-    AppState,
-    FlatList,
     Dimensions,
-    SafeAreaView,
-    NativeAppEventEmitter,
     TouchableOpacity,
     ActivityIndicator,
     Alert,
@@ -21,21 +15,11 @@ import {
     Image,
     SectionList
 } from 'react-native';
-
-import { Avatar, Card, IconButton, Title, Paragraph, ProgressBar, Button, TextInput, Switch } from 'react-native-paper';
-
-
+import { Card, Title, Paragraph, TextInput, Switch } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 const window = Dimensions.get('window');
-import Icon from 'react-native-vector-icons/FontAwesome';
-import { stringToBytes } from "convert-string";
-
-
-import { Col, Row, Grid } from "react-native-easy-grid";
 import LocationServicesDialogBox from "react-native-android-location-services-dialog-box";
-
 import AsyncStorage from '@react-native-community/async-storage';
-
 import {
     BleManager,
     BleError,
@@ -43,14 +27,9 @@ import {
     LogLevel,
     Characteristic,
 } from 'react-native-ble-plx';
-
-
 import Modal from 'react-native-modal';
-
-import base64 from 'base-64';
-import utf8 from 'utf8'
 import { Buffer } from 'buffer';
-
+import BackgroundTask from 'react-native-background-task';
 
 
 
@@ -80,11 +59,19 @@ interface State {
     email: any, nome: any, idade: any, peso: any, altura: any,
     outros: any,
     switchValueCardiaco: boolean, switchValuePressao: boolean, switchValueDiabete: boolean,
-    switchValue1: boolean
+    switchValue1: boolean,
+    interval: boolean, modalMedicao: boolean, loadingMedicao: boolean,
+    frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any, temperatura: any, medeTemperatura: boolean
 }
 
-const manager = new BleManager();
 
+BackgroundTask.define(() => {
+    console.log('Hello from a background task')
+    console.log('Alas Jackson Moreno')
+    BackgroundTask.finish()
+})
+
+const manager = new BleManager();
 
 async function getBluetoothScanPermission() {
     const granted = await PermissionsAndroid.request(
@@ -173,10 +160,19 @@ export default class HomeScreen extends PureComponent<Props, State> {
             outros: '',
             switchValueCardiaco: false, switchValuePressao: false, switchValueDiabete: false,
             switchValue1: true,
+            interval: false, modalMedicao: false, loadingMedicao: false,
+            frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false
         };
     }
 
     componentDidMount = async () => {
+
+        BackgroundTask.schedule({
+            period: 10, // Aim to run every 30 mins - more conservative on battery
+          })
+          
+          // Optional: Check if the device is blocking background tasks or not
+          this.checkStatus()
 
         console.log("check getBluetoothScanPermission access permission...")
         await getBluetoothScanPermission()
@@ -187,7 +183,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     }
 
-
     UNSAFE_componentWillMount() {
         const subscription = manager.onStateChange((state) => {
             if (state === 'PoweredOn') {
@@ -196,6 +191,23 @@ export default class HomeScreen extends PureComponent<Props, State> {
             }
         }, true);
     }
+
+    async checkStatus() {
+        const status = await BackgroundTask.statusAsync()
+        
+        if (status.available) {
+          // Everything's fine
+          console.log("status.available:  " + status.available)
+          return
+        }
+        
+        const reason = status.unavailableReason
+        if (reason === BackgroundTask.UNAVAILABLE_DENIED) {
+          Alert.alert('Denied', 'Please enable background "Background App Refresh" for this app')
+        } else if (reason === BackgroundTask.UNAVAILABLE_RESTRICTED) {
+          Alert.alert('Restricted', 'Background tasks are restricted on your device')
+        }
+      }
 
 
     scanAndConnect = async () => {
@@ -262,7 +274,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 device = await manager.connectToDevice(device.id)
                 this.setState({ deviceDados: device })
                 setTimeout(() => {
-                    this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green' , connected: true });
+                    this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true });
                 }, 1000);
 
             } else {
@@ -284,60 +296,105 @@ export default class HomeScreen extends PureComponent<Props, State> {
             console.log('Disconnected ', error)
         });
 
-
+        // Active listenning notify 
         await this.setupNotifications(device);
 
     }
 
-    async setupNotifications(device: any) {
 
-        // assuming the 'device' is already connected
-        await device.discoverAllServicesAndCharacteristics();
+
+    measureTempNow = async (device) => {
         const services = await device.services();
+        this.setState({ medeTemperatura: true })
 
-        // Ativando notificação de ECG+PPG HR
-        let UART_SERVICE_ALL = "0000fff0-0000-1000-8000-00805f9b34fb"  // UART Service
-        let TX_CHARACT_ALL = "0000fff7-0000-1000-8000-00805f9b34fb" // TX Characteristic (Property = Notify) - ALL
+        if (!device) {
+            return
+        } else {
+            try {
 
-        try {
-            let char = await manager.monitorCharacteristicForDevice(device.id,
-                UART_SERVICE_ALL,
-                TX_CHARACT_ALL,
-                this.onUARTSubscriptionUpdate_ALL
-            );
-        } catch (err) {
-            console.log(JSON.stringify(err))
+                let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+                let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
+
+                let comandoTemp = "qwAE/4aAAQ==" // -- 
+                await manager.writeCharacteristicWithResponseForDevice(device.id,
+                    UART_SERVICE, RX_CHARACT,
+                    comandoTemp
+                )
+                    .then(characteristic => {
+                    })
+                    .catch(err => {
+                        console.log(" valores > " + err)
+                    });
+
+                const timeout = setTimeout(() => {
+                    if (this.state.interval) {
+                        this.measureTempStop(device)
+                    }
+                }, 5000);
+
+                return () => clearTimeout(timeout);
+
+            } catch (err) {
+                console.log(err)
+            }
+
         }
+    }
 
+    measureTempStop = async (device) => {
+        const services = await device.services();
+        if (!device) {
+            // this.setState({ info4: "Dispositivo desconectado" })
+            return
+        } else {
+            try {
 
+                let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+                let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
+
+                let comandoTemp = "qwAE/4aAAA=="
+                await manager.writeCharacteristicWithResponseForDevice(device.id,
+                    UART_SERVICE, RX_CHARACT,
+                    comandoTemp
+                )
+                    .then(characteristic => {
+                        // this.setState({ info4: characteristic.value })     
+                    })
+                    .catch(err => {
+                        console.log(" valores > " + err)
+                    });
+            } catch (err) {
+                console.log(err)
+            }
+
+            this.setState({ medeTemperatura: false })
+        }
     }
 
 
-
-    onUARTSubscriptionUpdate = async (error: any, characteristics: any) => {
+    async setupNotifications(device: any) {
+        // assuming the 'device' is already connected
         try {
-            if (error) {
-                console.log(JSON.stringify(error))
-            } else if (characteristics) {
+            await device.discoverAllServicesAndCharacteristics();
+            const services = await device.services();
 
-                let Geralbuff = Buffer.from(characteristics.value, 'base64');
+            // Ativando notificação de ECG+PPG HR        
+            let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+            let TX_CHARACT = "6e400003-b5a3-f393-e0a9-e50e24dcca9e" // TX Characteristic (Property = Notify) 
 
-                let buff = Buffer.from(characteristics.value, 'base64');
-                const buff2 = buff[1];
-                // {"data": [4, 101], "type": "Buffer"}
+            try {
+                let retorno = await manager.monitorCharacteristicForDevice(device.id,
+                    UART_SERVICE, TX_CHARACT, this.onUARTSubscriptionUpdate_ALL
+                );
 
-                //  console.log(' Batimento cardíaco - Received: ', buff)
-                this.setState({ info: buff2 });
-
-                console.log(' General Received: ', Geralbuff)
-
-
-
+            } catch (err) {
+                console.log(JSON.stringify(err))
             }
+
         } catch (err) {
             console.log(JSON.stringify(err))
         }
-    };
+    }
 
 
     onUARTSubscriptionUpdate_ALL = async (error: any, characteristics: any) => {
@@ -346,38 +403,26 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 console.log(JSON.stringify(error))
             } else if (characteristics) {
 
+                let hex = Buffer.from(characteristics.value, 'base64');
 
-                let Geralbuff = Buffer.from(characteristics.value, 'base64');
-                let buff = Buffer.from(characteristics.value, 'base64');
+                let hex2 = hex[2]
+                let hex6 = hex[6]
+                let hex7 = hex[7]
+                let hex8 = hex[8]
+                let hex9 = hex[9]
 
-                let codFinalizado = Geralbuff[0]
-                let codSucesso = Geralbuff[1]
-
-                let hrv = Geralbuff[2]
-                let frequenciaCardiaca = Geralbuff[4]
-                let estresse = Geralbuff[5]
-                let hiperTensao = Geralbuff[6]
-                let hipoTensao = Geralbuff[7]
-                let humor = Geralbuff[8]
-                let frequenciaRespiratoria = Geralbuff[9]
-
-                console.log(' codFinalizado: ', codFinalizado + " hrv " + hrv)
-                console.log(' codSucesso: ', codSucesso + " hiperTensao " + hiperTensao)
-
-                await AsyncStorage.setItem("notificando", "1")
-
-                if (codFinalizado === 156 && codSucesso === 3) {
-
-                    await AsyncStorage.setItem("hrv", hrv.toString())
-                    await AsyncStorage.setItem("frequenciaCardiaca", frequenciaCardiaca.toString())
-                    await AsyncStorage.setItem("estresse", estresse.toString())
-                    await AsyncStorage.setItem("hiperTensao", hiperTensao.toString())
-                    await AsyncStorage.setItem("hipoTensao", hipoTensao.toString())
-                    await AsyncStorage.setItem("humor", humor.toString())
-                    await AsyncStorage.setItem("frequenciaRespiratoria", frequenciaRespiratoria.toString())
-                    await AsyncStorage.setItem("notificando", "0")
-
+                if (hex2 === 10) {
+                    this.setState({
+                        frequenciaCardiaca: hex6, oxigenio: hex7, hiperTensao: hex8, hipoTensao: hex9,
+                    })
+                } else if (hex2 === 5) {
+                    this.setState({ temperatura: hex[6] + '.' + hex[7] })
                 }
+
+
+
+                // Vai para página de medições    
+                // this.props.navigation.navigate("Medições");
 
             }
         } catch (err) {
@@ -390,7 +435,8 @@ export default class HomeScreen extends PureComponent<Props, State> {
         if (device) {
             await manager.cancelDeviceConnection(device.id);
             console.log("Desconectando ... ");
-            this.setState({ conectando: "Desconectado.", corIconBluetooth: 'gray', connected: false  });
+            this.setState({ conectando: "Desconectado.", corIconBluetooth: 'gray', connected: false });
+            Alert.alert("Instant Check:", "Desconectado!");
         } else {
             this.setState({ conectando: "Sem dispositivo conectado.", corIconBluetooth: 'gray' });
             Alert.alert("Instant Check:", "Sem dispositivo conectado");
@@ -415,7 +461,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             })
         }
 
-        if (msg.item === "Nova medição") {
+        if (msg.item === "Medição completa") {
             this.novaMedicao(this.state.deviceDados)
         }
 
@@ -424,7 +470,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     fechaModal = async () => {
         await this.setState({
-            modal: false, modalPerfil: false, modalSaude: false
+            modal: false, modalPerfil: false, modalSaude: false, modalMedicao: false
         })
     }
 
@@ -471,37 +517,74 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     novaMedicao = async (device) => {
 
+        // await this.setState({ loadingMedicao: true, modalMedicao: true }) 
+
         if (device) {
             const services = await device.services();
+            await this.setState({ loadingMedicao: true, modalMedicao: true })
+            await this.measureTempNow(device)
 
-            let UART_SERVICE = "0000fff0-0000-1000-8000-00805f9b34fb"  // UART Service
-            let TX_CHARACT = "0000fff7-0000-1000-8000-00805f9b34fb" // TX Characteristic (Property = Notify) 
-            let RX_CHARACT = "0000fff6-0000-1000-8000-00805f9b34fb" // RX Characteristic (Property = Write without response e READ )
+            let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+            let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
 
-            try {
-                let charX = await manager.monitorCharacteristicForDevice(device.id,
-                    UART_SERVICE, TX_CHARACT, this.onUARTSubscriptionUpdate
-                );
-            } catch (err) {
-                console.log(JSON.stringify(err))
-            }
-
-            let eu = "mQAAAAAAAAAAAAAAAAAAmQ=="
+            let comandoAll = "qwAE/zKAAQ==" // -- 
             await manager.writeCharacteristicWithResponseForDevice(device.id,
                 UART_SERVICE, RX_CHARACT,
-                eu
+                comandoAll
             )
                 .then(characteristic => {
-                    this.props.navigation.navigate("Medições")
+                    //this.setState({ info4: characteristic.value })
                 })
                 .catch(err => {
                     console.log(" valores > " + err)
-                })
+                });
+
+            const timeout = setTimeout(() => {
+                this.setState({ interval: true })
+
+                if (this.state.interval) {
+                    this.measureAllStop(this.state.deviceDados)
+                }
+            }, 40000);
+
+            return () => clearTimeout(timeout);
+
         } else {
             Alert.alert("Instant Check:", "Sem dispositivo conectado");
         }
-
     }
+
+    measureAllStop = async (device) => {
+        const services = await device.services();
+        if (!device) {
+            console.log("Dispositivo desconectado")
+            //this.setState({ info4: "Dispositivo desconectado" })
+            return
+        } else {
+            try {
+                let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+                let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
+
+                let comandoAll = "qwAE/zKAAA=="
+                await manager.writeCharacteristicWithResponseForDevice(device.id,
+                    UART_SERVICE, RX_CHARACT,
+                    comandoAll
+                )
+                    .then(characteristic => {
+                        // this.setState({ info4: characteristic.value })     
+                    })
+                    .catch(err => {
+                        console.log(" valores > " + err)
+                        //this.setState({ info4: "Escrevendo..." + err })
+                    });
+            } catch (err) {
+                console.log(err)
+            }
+
+            this.setState({ loadingMedicao: false })
+        }
+    }
+
 
 
     render() {
@@ -557,7 +640,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     <SectionList
                         sections={[
                             { title: 'MEUS DADOS:', data: ['Perfil', 'Saúde e bem-estar'] },
-                            { title: 'INDICADORES:', data: ['Nova medição', 'Alertas', 'Histórico'] },
+                            { title: 'INDICADORES:', data: ['Medição completa', 'Alertas', 'Histórico'] },
                         ]}
                         renderItem={({ item }) =>
                             <TouchableOpacity onPress={() => this.abreModal({ item })} >
@@ -746,7 +829,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 </View>
 
 
-
                 <View>
                     <Modal
                         isVisible={this.state.modalSaude}
@@ -862,6 +944,111 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
 
 
+
+                <View>
+                    <Modal
+                        isVisible={this.state.modalMedicao}
+                        animationIn={"slideInLeft"}
+                        onBackButtonPress={() => this.setState({ modalMedicao: false })}
+                        style={styles.modalMedicao}
+                    >
+
+
+
+
+                        <ScrollView>
+
+                            <Card>
+                                <Image
+                                    style={styles.tinyLogoMedicao}
+                                    source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/imagemMedicao.png' }}
+                                />
+                                <Title> <FontAwesome5 name={"cogs"} size={13} color="gray" />  <Text style={styles.titleTextTitulo} > Medição completa </Text>  </Title>
+                            </Card>
+
+                            <View style={{ margin: 1 }}>
+
+                                <View style={{ flexDirection: "row", justifyContent: "center" }}>
+
+                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                        <View style={styles.cardBorder}>
+                                            <View >
+                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"heartbeat"} size={30} color="red" /> </Text>
+                                                <Text style={styles.titleTextTitulo} > Frequência Cardíaca </Text>
+                                                <Text style={styles.textText} >{this.state.frequenciaCardiaca}
+                                                    <Text style={styles.textTextDescricao}>bpm</Text> </Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                        <View style={styles.cardBorder}>
+                                            <View >
+                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"stethoscope"} size={30} color="gray" /> </Text>
+                                                <Text style={styles.titleTextTitulo} > Pressão arterial </Text>
+                                                <Text style={styles.textText}>{this.state.hiperTensao}
+                                                    <Text style={styles.textTextDescricao}>/</Text>
+                                                    <Text style={styles.textText} >{this.state.hipoTensao} </Text>
+                                                    <Text style={styles.textTextDescricao}>mmhg</Text> </Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                </View>
+
+                                <View style={{ flexDirection: "row", justifyContent: "center" }}>
+
+                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                        <View style={styles.cardBorder}>
+                                            <View >
+                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"tint"} size={30} color="black" /> </Text>
+                                                <Text style={styles.titleTextTitulo} > Saturação do oxigênio no sangue </Text>
+                                                <Text style={styles.textText} >{this.state.oxigenio}
+                                                    <Text style={styles.textTextDescricao}>%</Text>  </Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+
+
+                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                        <View style={styles.cardBorder}>
+                                            <View >
+                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"thermometer-half"} size={30} color="green" /> </Text>
+                                                <Text style={styles.titleTextTitulo} > Temperatura  </Text>
+                                                <Text style={styles.textText} >  {this.state.temperatura}
+                                                    <Text style={styles.textTextDescricao}>°C </Text> </Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                </View>
+
+                                <View style={{ padding: 5 }}>
+                                    {this.state.loadingMedicao &&
+                                        <ActivityIndicator size={"small"} color="red" style={{ marginTop: 1, justifyContent: "center" }} />
+                                    }
+                                </View>
+
+                            </View>
+
+
+
+                        </ScrollView>
+
+                        <View style={{ flexDirection: "row", justifyContent: "center", backgroundColor: "white" }}>
+
+                            <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", margin: 3, paddingTop: 1, paddingLeft: 0 }}
+                                onPress={this.fechaModal} >
+                                <FontAwesome5 name='sign-out-alt' color='black' size={17} > Sair </FontAwesome5>
+                            </TouchableOpacity>
+
+                        </View>
+
+                    </Modal>
+                </View>
+
+
+
             </>
         );
     }
@@ -889,26 +1076,62 @@ const styles = StyleSheet.create({
     textText: {
         fontSize: 18,
         color: "red",
-        fontWeight: "bold"
+        fontWeight: "bold",
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
     },
     textTextDescricao: {
-        fontSize: 14,
+        fontSize: 11,
         color: "#87CEFA",
         //fontWeight: "bold",
-        marginTop: "2%"
+        //marginTop: "2%",
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
     },
     titleText: {
         fontSize: 18,
         fontWeight: "bold"
     },
+    titleTextTitulo: {
+        fontSize: 12,
+        //fontWeight: "bold",
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+    },
     cardBorder: {
-        borderTopRightRadius: 80,
-        borderBottomRightRadius: 80,
-        backgroundColor: 'white',
-        padding: 30,
-        margin: 10,
-        borderColor: 'black',
-        borderWidth: 1,
+        backgroundColor: "white",
+        flex: 1,
+        padding: 10,
+        margin: 5,
+        marginTop: 20,
+
+        width: 133,
+        //height: 150,
+
+        borderColor: "gray",
+        borderWidth: 0.3,
+        borderRadius: 2,
+        borderBottomWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 10, height: 10 },
+        shadowOpacity: 3,
+        shadowRadius: 10,
+        elevation: 15,
+
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
     },
     cardBorderPersonal: {
         borderTopRightRadius: 30,
@@ -926,6 +1149,14 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
+    },
+    tinyLogoMedicao: {
+        width: 150,
+        height: 150,
+        borderRadius: 40,
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
     },
     sectionHeader: {
         //padding: 30,
@@ -954,6 +1185,14 @@ const styles = StyleSheet.create({
         //justifyContent: undefined,
     },
     modalPerfil: {
+        backgroundColor: 'white',
+        margin: 30, // This is the important style you need to set
+        marginBottom: 80,
+        //alignItems: undefined,
+        //justifyContent: undefined,
+    },
+    modalMedicao: {
+        // backgroundColor: '#dcdcdc',
         backgroundColor: 'white',
         margin: 30, // This is the important style you need to set
         marginBottom: 80,

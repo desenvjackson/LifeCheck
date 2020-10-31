@@ -24,6 +24,7 @@
     "react-native": "0.63.2",
     "react-native-android-location-services-dialog-box": "^2.8.2",
     "react-native-animated-loader": "^0.0.8",
+    "react-native-background-task": "^0.2.1",
     "react-native-base64": "^0.1.0",
     "react-native-ble-manager": "^7.3.1",
     "react-native-ble-plx": "^2.0.1",
