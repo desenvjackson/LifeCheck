@@ -29,9 +29,8 @@ import {
 } from 'react-native-ble-plx';
 import Modal from 'react-native-modal';
 import { Buffer } from 'buffer';
-import BackgroundTask from 'react-native-background-task';
 
-
+import BackgroundFetch from "react-native-background-fetch";
 
 
 
@@ -63,13 +62,6 @@ interface State {
     interval: boolean, modalMedicao: boolean, loadingMedicao: boolean,
     frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any, temperatura: any, medeTemperatura: boolean
 }
-
-
-BackgroundTask.define(() => {
-    console.log('Hello from a background task')
-    console.log('Alas Jackson Moreno')
-    BackgroundTask.finish()
-})
 
 const manager = new BleManager();
 
@@ -167,12 +159,46 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     componentDidMount = async () => {
 
-        BackgroundTask.schedule({
-            period: 10, // Aim to run every 30 mins - more conservative on battery
-          })
-          
-          // Optional: Check if the device is blocking background tasks or not
-          this.checkStatus()
+        // Configure it.
+        BackgroundFetch.configure({
+            enableHeadless: true,
+            minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
+            // Android options
+            forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
+            stopOnTerminate: false,
+            startOnBoot: true,
+            requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
+            requiresCharging: false,      // Default
+            requiresDeviceIdle: false,    // Default
+            requiresBatteryNotLow: false, // Default
+            requiresStorageNotLow: false  // Default
+        }, async (taskId) => {
+            console.log("[js] Received background-fetch event: ", taskId);
+            // Required: Signal completion of your task to native code
+            // If you fail to do this, the OS can terminate your app
+            // or assign battery-blame for consuming too much background-time
+            BackgroundFetch.finish(taskId);
+        }, (error) => {
+            console.log("[js] RNBackgroundFetch failed to start");
+        });
+
+        // Optional: Query the authorization status.
+        BackgroundFetch.status((status) => {
+            switch (status) {
+                case BackgroundFetch.STATUS_RESTRICTED:
+                    console.log("BackgroundFetch restricted");
+                    break;
+                case BackgroundFetch.STATUS_DENIED:
+                    console.log("BackgroundFetch denied");
+                    break;
+                case BackgroundFetch.STATUS_AVAILABLE:
+                    console.log("BackgroundFetch is enabled");
+                    break;
+            }
+        });
+
+       
+
 
         console.log("check getBluetoothScanPermission access permission...")
         await getBluetoothScanPermission()
@@ -191,23 +217,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
             }
         }, true);
     }
-
-    async checkStatus() {
-        const status = await BackgroundTask.statusAsync()
-        
-        if (status.available) {
-          // Everything's fine
-          console.log("status.available:  " + status.available)
-          return
-        }
-        
-        const reason = status.unavailableReason
-        if (reason === BackgroundTask.UNAVAILABLE_DENIED) {
-          Alert.alert('Denied', 'Please enable background "Background App Refresh" for this app')
-        } else if (reason === BackgroundTask.UNAVAILABLE_RESTRICTED) {
-          Alert.alert('Restricted', 'Background tasks are restricted on your device')
-        }
-      }
 
 
     scanAndConnect = async () => {
@@ -273,10 +282,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
             if (!isConnected) {
                 device = await manager.connectToDevice(device.id)
                 this.setState({ deviceDados: device })
+                await AsyncStorage.setItem('asyncdeviceID',device.id)
                 setTimeout(() => {
                     this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true });
-                }, 1000);
-
+                }, 100);
             } else {
                 this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray' });
             }
@@ -436,6 +445,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             await manager.cancelDeviceConnection(device.id);
             console.log("Desconectando ... ");
             this.setState({ conectando: "Desconectado.", corIconBluetooth: 'gray', connected: false });
+            await AsyncStorage.setItem('asyncdeviceID','')
             Alert.alert("Instant Check:", "Desconectado!");
         } else {
             this.setState({ conectando: "Sem dispositivo conectado.", corIconBluetooth: 'gray' });
