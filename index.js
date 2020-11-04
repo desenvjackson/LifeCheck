@@ -8,19 +8,77 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { name as appName } from './app.json';
 
 import BackgroundFetch from "react-native-background-fetch";
-import { BleManager } from 'react-native-ble-plx';
+import { BleManager, ScanMode } from 'react-native-ble-plx';
 import AsyncStorage from '@react-native-community/async-storage';
 import { Buffer } from 'buffer';
 import Moment from 'react-moment';
 import 'moment-timezone';
 import moment from "moment";
+// import {  MonitoringHistoryModel } from './src/models'
+import api from './src/services/index.tsx';
 
 AppRegistry.registerComponent(appName, () => App);
 
 const manager = new BleManager();
 
-this.state = { startMin: "", endMin: "", devicedados: "" }
-this.state = { frequenciaCardiaca:"", oxigenio:"", hiperTensao:"", hipoTensao:"", temperatura:"" }
+this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedFim: 0 }
+this.state = { frequenciaCardiaca: "", oxigenio: "", hiperTensao: "", hipoTensao: "", temperatura: "" }
+
+/*
+let ScanOptions = { scanMode: ScanMode.LowLatency }
+manager.startDeviceScan(null, ScanOptions, (error, device) => {
+    if (error) {
+        // Handle error (scanning will be stopped automatically)
+        console.log("Error - startDeviceScan : " + error);
+        return
+    }
+
+    if (device.name != null) {
+        compareID(device)
+        sendDataCloud()
+    }
+    
+});
+*/
+
+
+// Configure it.
+BackgroundFetch.configure({
+    enableHeadless: true,
+    minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
+    // Android options
+    forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
+    stopOnTerminate: false,
+    startOnBoot: true,
+    requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
+    requiresCharging: false,      // Default
+    requiresDeviceIdle: false,    // Default
+    requiresBatteryNotLow: false, // Default
+    requiresStorageNotLow: false  // Default
+}, async (taskId) => {
+    console.log("[js] Received background-fetch event: ", taskId);
+    // Required: Signal completion of your task to native code
+    // If you fail to do this, the OS can terminate your app
+    // or assign battery-blame for consuming too much background-time
+    BackgroundFetch.finish(taskId);
+}, (error) => {
+    console.log("[js] RNBackgroundFetch failed to start");
+});
+
+// Optional: Query the authorization status.
+BackgroundFetch.status((status) => {
+    switch (status) {
+        case BackgroundFetch.STATUS_RESTRICTED:
+            console.log("BackgroundFetch restricted");
+            break;
+        case BackgroundFetch.STATUS_DENIED:
+            console.log("BackgroundFetch denied");
+            break;
+        case BackgroundFetch.STATUS_AVAILABLE:
+            console.log("BackgroundFetch is enabled");
+            break;
+    }
+});
 
 
 const MyHeadlessTask = async (event) => {
@@ -30,15 +88,18 @@ const MyHeadlessTask = async (event) => {
 
     try {
 
-        manager.startDeviceScan(null, null, (error, device) => {
+        let ScanOptions = { scanMode: ScanMode.LowLatency }
+        manager.startDeviceScan(null, ScanOptions, (error, device) => {
             if (error) {
                 // Handle error (scanning will be stopped automatically)
                 console.log("Error - startDeviceScan : " + error);
                 return
             }
-
-            compareID(device)
-
+            
+            if (device.name != null) {
+                compareID(device)
+            }
+        
         });
 
     } catch (err) {
@@ -71,9 +132,14 @@ const compareID = async (device) => {
             console.log("isConnected - else if : " + "Conectei....")
 
             // #### iniciar medição básica
+            this.state.tempMedFim = 0
+            this.state.allMedFim = 0
+
             manager.stopDeviceScan()
             this.state.devicedados = device
+
             await setupNotifications(device)
+            await measureTempNow(device)
             await novaMedicao(device)
 
         } else {
@@ -96,7 +162,6 @@ const novaMedicao = async (device) => {
         if (device) {
             console.log('novaMedicao 1')
             const services = await device.services();
-            await measureTempNow(device)
 
             let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
             let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
@@ -166,6 +231,9 @@ const measureAllStop = async (device) => {
                     console.log(" valores > " + err)
                     //this.setState({ info4: "Escrevendo..." + err })
                 });
+
+            this.state.allMedFim = 1
+
         } catch (err) {
             console.log("measureAllStop : " + err)
         }
@@ -195,7 +263,6 @@ const setupNotifications = async (device) => {
         } catch (err) {
             console.log('setupNotification catch 1' + JSON.stringify(err))
         }
-
     } catch (err) {
         console.log('setupNotification catch 2 ' + JSON.stringify(err))
     }
@@ -210,13 +277,19 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
     try {
 
         let startEnd = moment(new Date()).format("HH:mm")
-        var ms = moment(this.state.startMin, "HH:mm").diff(moment(startEnd, "HH:mm"));
+        var ms = moment(startEnd, "HH:mm").diff(moment(this.state.startMin, "HH:mm"));
         var d = moment.duration(ms);
         var s = moment.utc(ms).format("mm");
 
-        if (s > 1) {            
-           await measureTempStop(this.state.devicedados)
-           await measureAllStop(this.state.devicedados)               
+        console.log(this.state.allMedFim)
+        console.log(this.state.tempMedFim)
+
+        if (s > 1 && this.state.allMedFim === 0) {
+            await measureAllStop(this.state.devicedados)
+        }
+
+        if (s > 2 && this.state.tempMedFim === 0) {
+            await measureTempStop(this.state.devicedados)
         }
 
         if (error) {
@@ -237,20 +310,13 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
                 this.state.hipoTensao = hex9
 
                 console.log(
-                    "frequenciaCardiaca:" + hex6, "oxigenio:" + hex7, "hiperTensao:" + hex8, "hipoTensao:" + hex9,
+                    this.state.frequenciaCardiaca, this.state.oxigenio, this.state.hiperTensao, this.state.hipoTensao
                 )
 
-                console.log(
-                    this.state.frequenciaCardiaca,this.state.oxigenio, this.state.hiperTensao, this.state.hipoTensao
-                )
 
-                manager.stopDeviceScan()
-                BackgroundFetch.finish(taskId)
-                return false
-                
-            } else if (hex2 === 5) {
+            } else if (hex2 === 5 && hex[6] > 0 && hex[4] === 134) {
                 this.state.temperatura = hex[6] + '.' + hex[7]
-                console.log(hex[6] + '.' + hex[7])
+                console.log(this.state.temperatura)
             }
 
             console.log(hex)
@@ -284,12 +350,6 @@ const measureTempNow = async (device) => {
                     console.log(" valores > " + err)
                 });
 
-            //this.setTimeout(() => {
-            //      measureTempStop(device)          
-            //}, 5000);
-
-            //return () => this.clearTimeout(timeout);
-
         } catch (err) {
             console.log(err)
         }
@@ -319,8 +379,53 @@ const measureTempStop = async (device) => {
                 .catch(err => {
                     console.log(" valores > " + err)
                 });
+
+            this.state.tempMedFim = 1
+            await sendDataCloud()
+
         } catch (err) {
             console.log(err)
         }
+    }
+}
+
+
+const sendDataCloud = async () => {
+
+    try {
+
+        const MonitoringHistoryModel = {
+            frequenciaCardiaca: this.state.frequenciaCardiaca,
+            oxigenio: this.state.oxigenio,
+            hiperTensao: this.state.hiperTensao,
+            hipoTensao: this.state.hipoTensao,
+            temperatura: this.state.temperatura,
+            id_patient: 1,
+            id_firm: 1,
+            id_monitoringstatus: 1,
+            id_user: 1,
+        }
+
+        // envia dados para a tabela de monitoramento
+        var { data: token } = await api.post("monitoring/sendDataCloud", "data=" + JSON.stringify(MonitoringHistoryModel));
+
+        //Passando o status da consulta, em caso de SUCESSO ou ERRO
+        if (token["status"] === 'sucesso') {
+            console.log('sendDataCloud', ' Sucesso !')
+        } else {
+            console.log('sendDataCloud', 'Dados incorretos !')
+        }
+
+        console.log(
+            "sendDataCloud",
+            this.state.frequenciaCardiaca,
+            this.state.oxigenio,
+            this.state.hiperTensao,
+            this.state.hipoTensao,
+            this.state.temperatura
+        )
+
+    } catch (err) {
+        console.log(err)
     }
 }

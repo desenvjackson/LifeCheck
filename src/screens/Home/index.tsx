@@ -22,7 +22,7 @@ import LocationServicesDialogBox from "react-native-android-location-services-di
 import AsyncStorage from '@react-native-community/async-storage';
 import {
     BleManager,
-    BleError,
+    ScanMode,
     Device,
     LogLevel,
     Characteristic,
@@ -158,7 +158,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
     }
 
     componentDidMount = async () => {
-
+/*
         // Configure it.
         BackgroundFetch.configure({
             enableHeadless: true,
@@ -197,7 +197,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             }
         });
 
-       
+*/       
 
 
         console.log("check getBluetoothScanPermission access permission...")
@@ -230,7 +230,8 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
         try {
             var peripherals = this.state.peripherals;
-            manager.startDeviceScan(null, null, (error, device) => {
+            let ScanOptions = { scanMode: ScanMode.LowLatency }
+            manager.startDeviceScan(null, ScanOptions, (error, device) => {
                 if (error) {
                     // Handle error (scanning will be stopped automatically)
                     console.log("Error - startDeviceScan : " + error);
@@ -241,29 +242,24 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     device.name = 'SEM NOME';
                 }
 
-                peripherals.set(device.id, device);
-                this.setState({ peripherals });
+               // Quando encontrar o dispositivo encerra o processo de scan.    
+                if (device.name === 'T1S') {
+                    manager.stopDeviceScan();
 
-                //  let list = Array.from(this.state.peripherals.values());
+                    peripherals.set(device.id, device);
+                    this.setState({ peripherals });
+                    this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
+                    let lista = this.state.dadosservices.filter((index) => index.name != 'SEM NOME');
+                    this.setState({ dados: lista });
+                }               
 
-                this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
-                let lista = this.state.dadosservices.filter((index) => index.name != 'SEM NOME');
-                this.setState({ dados: lista });
+                console.log(device.name)
 
-                // setTimeout(() => {
-                //  manager.stopDeviceScan();
-                //this.setState({ loading: false, scanning: false });
-                // }, 5000);
-
+        
             });
         } catch (err) {
-            // some error handling
             console.log("scanAndConnect" + err);
         }
-
-
-
-
     }
 
 

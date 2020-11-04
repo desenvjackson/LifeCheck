@@ -3,9 +3,8 @@ import {
   StyleSheet,
   Text,
   View,
-  ActivityIndicator,TouchableOpacity,ScrollView
+  ActivityIndicator,TouchableOpacity,ScrollView, Card
 } from 'react-native';
-import { Avatar, Card, IconButton, Title, Paragraph, ProgressBar, Colors } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 
