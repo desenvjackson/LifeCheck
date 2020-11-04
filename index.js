@@ -24,7 +24,7 @@ const manager = new BleManager();
 this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedFim: 0 }
 this.state = { frequenciaCardiaca: "", oxigenio: "", hiperTensao: "", hipoTensao: "", temperatura: "" }
 
-/*
+
 let ScanOptions = { scanMode: ScanMode.LowLatency }
 manager.startDeviceScan(null, ScanOptions, (error, device) => {
     if (error) {
@@ -35,11 +35,10 @@ manager.startDeviceScan(null, ScanOptions, (error, device) => {
 
     if (device.name != null) {
         compareID(device)
-        sendDataCloud()
     }
-    
+
 });
-*/
+
 
 
 // Configure it.
@@ -87,21 +86,21 @@ const MyHeadlessTask = async (event) => {
     console.log('[BackgroundFetch HeadlessTask] start: ', taskId);
 
     try {
-
-        let ScanOptions = { scanMode: ScanMode.LowLatency }
-        manager.startDeviceScan(null, ScanOptions, (error, device) => {
-            if (error) {
-                // Handle error (scanning will be stopped automatically)
-                console.log("Error - startDeviceScan : " + error);
-                return
-            }
-            
-            if (device.name != null) {
-                compareID(device)
-            }
-        
-        });
-
+        /*
+                let ScanOptions = { scanMode: ScanMode.LowLatency }
+                manager.startDeviceScan(null, ScanOptions, (error, device) => {
+                    if (error) {
+                        // Handle error (scanning will be stopped automatically)
+                        console.log("Error - startDeviceScan : " + error);
+                        return
+                    }
+                    
+                    if (device.name != null) {
+                        compareID(device)
+                    }
+                
+                });
+        */
     } catch (err) {
         // some error handling
         console.log("scanAndConnect" + err);
@@ -126,9 +125,7 @@ const compareID = async (device) => {
         if (device.id === asyncdeviceID) {
 
             console.log("isConnected - else if : " + "NOT Connected")
-
             device = await manager.connectToDevice(device.id)
-
             console.log("isConnected - else if : " + "Conectei....")
 
             // #### iniciar medição básica
@@ -138,9 +135,8 @@ const compareID = async (device) => {
             manager.stopDeviceScan()
             this.state.devicedados = device
 
-            await setupNotifications(device)
-            await measureTempNow(device)
-            await novaMedicao(device)
+            // Validando se tá na hora de realizar uma medição
+            await checkmonitoringschedule(device)
 
         } else {
             console.log("isConnected: " + "NOT Connected")
@@ -151,6 +147,23 @@ const compareID = async (device) => {
         // some error handling
         console.log("compareID" + err);
         // BackgroundFetch.finish(taskId);
+    }
+}
+
+
+const checkmonitoringschedule = async (device) => {
+    //Recuperando o ultimo usuário logado
+    let id_patient = await AsyncStorage.getItem("login")
+
+    // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
+    const MonitoringPatient = { id_patient: 1 }
+    var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));
+
+    //Passando o status da consulta, em caso de SUCESSO ou ERRO
+    if (returnData["status"] === 'sucesso' && returnData["dados"] === 1) {
+        await setupNotifications(device)
+        await measureTempNow(device)
+        await novaMedicao(device)
     }
 }
 
