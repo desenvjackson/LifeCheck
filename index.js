@@ -24,11 +24,11 @@ const manager = new BleManager();
 this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedFim: 0 }
 this.state = { frequenciaCardiaca: "", oxigenio: "", hiperTensao: "", hipoTensao: "", temperatura: "" }
 
-
+/*
 let ScanOptions = { scanMode: ScanMode.LowLatency }
 manager.startDeviceScan(null, ScanOptions, (error, device) => {
     if (error) {
-        // Handle error (scanning will be stopped automatically)
+        // Handle error (scanning will be stopped automatically)r
         console.log("Error - startDeviceScan : " + error);
         return
     }
@@ -38,8 +38,7 @@ manager.startDeviceScan(null, ScanOptions, (error, device) => {
     }
 
 });
-
-
+*/
 
 // Configure it.
 BackgroundFetch.configure({
@@ -86,7 +85,6 @@ const MyHeadlessTask = async (event) => {
     console.log('[BackgroundFetch HeadlessTask] start: ', taskId);
 
     try {
-        /*
                 let ScanOptions = { scanMode: ScanMode.LowLatency }
                 manager.startDeviceScan(null, ScanOptions, (error, device) => {
                     if (error) {
@@ -100,7 +98,7 @@ const MyHeadlessTask = async (event) => {
                     }
                 
                 });
-        */
+
     } catch (err) {
         // some error handling
         console.log("scanAndConnect" + err);
@@ -437,6 +435,10 @@ const sendDataCloud = async () => {
             this.state.hipoTensao,
             this.state.temperatura
         )
+
+        // Limpando states
+        this.state.tempMedFim = 0
+        this.state.allMedFim = 0
 
     } catch (err) {
         console.log(err)

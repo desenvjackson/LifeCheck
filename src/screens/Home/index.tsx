@@ -31,8 +31,7 @@ import Modal from 'react-native-modal';
 import { Buffer } from 'buffer';
 
 import BackgroundFetch from "react-native-background-fetch";
-
-
+import api from '../../services/index'
 
 interface Props {
     navigation: NavigationScreenProp<any, any>;
@@ -281,7 +280,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 await AsyncStorage.setItem('asyncdeviceID',device.id)
                 setTimeout(() => {
                     this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true });
-                }, 100);
+                }, 0);
             } else {
                 this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray' });
             }
@@ -420,6 +419,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     this.setState({
                         frequenciaCardiaca: hex6, oxigenio: hex7, hiperTensao: hex8, hipoTensao: hex9,
                     })
+
+                    // Enviando dados para dashboard
+                    await this.sendDataCloud(hex6,hex7,hex8,hex9)
+
                 } else if (hex2 === 5) {
                     this.setState({ temperatura: hex[6] + '.' + hex[7] })
                 }
@@ -586,11 +589,41 @@ export default class HomeScreen extends PureComponent<Props, State> {
             } catch (err) {
                 console.log(err)
             }
-
             this.setState({ loadingMedicao: false })
         }
     }
 
+
+
+    sendDataCloud = async (frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any) => {
+        try {    
+            const MonitoringHistoryModel = {
+                frequenciaCardiaca: frequenciaCardiaca,
+                oxigenio: oxigenio,
+                hiperTensao: hiperTensao,
+                hipoTensao: hipoTensao,
+                temperatura: this.state.temperatura,
+                id_patient: 1,
+                id_firm: 1,
+                id_monitoringstatus: 1,
+                id_user: 1,
+            } 
+  
+            // envia dados para a tabela de monitoramento
+            var { data: token } = await api.post("monitoring/sendDataCloud", "data=" + JSON.stringify(MonitoringHistoryModel));
+    
+            //Passando o status da consulta, em caso de SUCESSO ou ERRO
+            if (token["status"] === 'sucesso') {
+                console.log('sendDataCloud', ' Sucesso !')
+            } else {
+                console.log('sendDataCloud', 'Dados incorretos !')
+            }
+                console.log("sendDataCloud")                 
+           } catch (err) {
+            console.log(err)
+        }
+   }
+    
 
 
     render() {
@@ -959,9 +992,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
                         style={styles.modalMedicao}
                     >
 
-
-
-
                         <ScrollView>
 
                             <Card>
@@ -969,7 +999,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                     style={styles.tinyLogoMedicao}
                                     source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/imagemMedicao.png' }}
                                 />
-                                <Title> <FontAwesome5 name={"cogs"} size={13} color="gray" />  <Text style={styles.titleTextTitulo} > Medição completa </Text>  </Title>
+                             {/*   <Title> <FontAwesome5 name={"cogs"} size={13} color="gray" />  <Text style={styles.titleTextTitulo} > Medição completa </Text>  </Title> */}
                             </Card>
 
                             <View style={{ margin: 1 }}>
