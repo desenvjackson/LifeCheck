@@ -78,7 +78,7 @@ BackgroundFetch.status((status) => {
     }
 });
 
-
+  
 const MyHeadlessTask = async (event) => {
     // Get task id from event {}:
     let taskId = event.taskId;
@@ -405,13 +405,15 @@ const sendDataCloud = async () => {
 
     try {
 
+        let id_patient = await AsyncStorage.getItem('id_patient')
+
         const MonitoringHistoryModel = {
             frequenciaCardiaca: this.state.frequenciaCardiaca,
             oxigenio: this.state.oxigenio,
             hiperTensao: this.state.hiperTensao,
             hipoTensao: this.state.hipoTensao,
             temperatura: this.state.temperatura,
-            id_patient: 1,
+            id_patient: id_patient,
             id_firm: 1,
             id_monitoringstatus: 1,
             id_user: 1,

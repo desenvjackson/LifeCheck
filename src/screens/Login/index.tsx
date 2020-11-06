@@ -1,11 +1,13 @@
 
 import React from 'react';
-import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, AsyncStorage, TouchableOpacity, Text } from 'react-native';
+import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { NavigationScreenProp } from 'react-navigation';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 import Styles, { Variables } from '../../styles';
 import { Button } from '../../components/Button';
+
+import AsyncStorage from '@react-native-community/async-storage';
 
 import api from '../../services';
 import { UsuarioModel } from '../../models';
@@ -52,8 +54,8 @@ export default class LoginScreen extends React.Component<Props, State> {
         // Cria o state do componente
         this.state = {
             loading: true,
-            usuario: "usuario@InstantCheck.com.br",
-            senha: "12345678",
+            usuario: "",
+            senha: "",
             error: '',
             login: "",
             mSenha: true,
@@ -66,10 +68,8 @@ export default class LoginScreen extends React.Component<Props, State> {
 
     login = async () => {
 
-        this.props.navigation.navigate("Scan");
-        
+        // this.props.navigation.navigate("Scan");         
 
-        /*
         if (this.state.usuario.trim() === "") {
             Alert.alert("Alerta!", "Campo vazio não permitido! ");
             this.focusNextField('usuario');
@@ -86,27 +86,27 @@ export default class LoginScreen extends React.Component<Props, State> {
 
                 // Monta o objeto UsuarioModel para enviar para a API
                 var usuario = new UsuarioModel();
-                usuario.login = this.state.usuario;
+                usuario.email = this.state.usuario;
                 usuario.password = this.state.senha;
 
                 // Executa o método "login" na controller "usuario" na API
                 var { data: token } = await api.post("login/acesso", "dados=" + JSON.stringify(usuario));
 
+                console.log ( JSON.stringify(token["dados"][0]["nome"]) )
+
                 //Passando o status da consulta, em caso de SUCESSO ou ERRO
                 if (token["status"] === 'sucesso') {
 
                     // Atribundo valor de retorno da consulta JSON para uma GLOBAL
-                     await AsyncStorage.setItem("login", JSON.stringify(token["dados"][0]["login"]));
-                     await AsyncStorage.setItem("empcod", JSON.stringify(token["dados"][0]["empcod"]));
-                     await AsyncStorage.setItem("idGestor", JSON.stringify(token["dados"][0]["id_gestor"]));
-                     await AsyncStorage.setItem("idUnidade", JSON.stringify(token["dados"][0]["id_unidade"]));
+                     await AsyncStorage.setItem("email", JSON.stringify(token["dados"][0]["email"]));
+                     await AsyncStorage.setItem("nome", JSON.stringify(token["dados"][0]["nome"]));
+                     await AsyncStorage.setItem("id_firm", JSON.stringify(token["dados"][0]["id_firm"]));
+                     await AsyncStorage.setItem("id_patient", JSON.stringify(token["dados"][0]["id_patient"]));
 
-                    this.props.navigation.navigate("Devices");
+                    this.props.navigation.navigate("Scan");
 
                 } else {
-
                     Alert.alert('Acesso', 'Dados incorretos !')
-
                 }
 
                 // Desabilitando o loading
@@ -125,7 +125,7 @@ export default class LoginScreen extends React.Component<Props, State> {
                 mSenha: true
             })
         }
-        */
+        
     }
 
     novoUsuario = async () => {
@@ -268,10 +268,12 @@ export default class LoginScreen extends React.Component<Props, State> {
                     </TouchableOpacity>
                 }
 
-
+            
                 {!this.state.loading &&
                     <ActivityIndicator size={"large"} color={Variables.colors.black} style={{ marginTop: 20, marginBottom: 20 }} />
                 }
+
+                {/*
                 <View style={{ marginTop: 50, marginBottom: 20, justifyContent: 'center', flexDirection: 'row' }}>
                     <Text style={{ fontSize: 12, color: 'black' }}> Esqueceu sua senha ? </Text>
                     <TouchableOpacity
@@ -284,7 +286,6 @@ export default class LoginScreen extends React.Component<Props, State> {
 
 
                 <View style={{ justifyContent: 'center', flexDirection: 'row' }}  >
-
                     <Text style={{ fontSize: 12, color: 'black' }}>Não tem uma conta ? </Text>
                     <TouchableOpacity
                         onPress={this.novoUsuario}
@@ -293,6 +294,8 @@ export default class LoginScreen extends React.Component<Props, State> {
                         <Text style={{ fontSize: 12, color: 'black', textDecorationLine: 'underline', color: 'blue' }} >Inscrever-se</Text>
                     </TouchableOpacity>
                 </View>
+
+                */}
 
             </Screen>
 

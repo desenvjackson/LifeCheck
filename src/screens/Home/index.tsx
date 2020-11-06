@@ -59,7 +59,8 @@ interface State {
     switchValueCardiaco: boolean, switchValuePressao: boolean, switchValueDiabete: boolean,
     switchValue1: boolean,
     interval: boolean, modalMedicao: boolean, loadingMedicao: boolean,
-    frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any, temperatura: any, medeTemperatura: boolean
+    frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any, temperatura: any, medeTemperatura: boolean,
+    nomeUsuario: any
 }
 
 const manager = new BleManager();
@@ -152,51 +153,52 @@ export default class HomeScreen extends PureComponent<Props, State> {
             switchValueCardiaco: false, switchValuePressao: false, switchValueDiabete: false,
             switchValue1: true,
             interval: false, modalMedicao: false, loadingMedicao: false,
-            frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false
+            frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false,
+            nomeUsuario: ''
         };
     }
 
     componentDidMount = async () => {
-/*
-        // Configure it.
-        BackgroundFetch.configure({
-            enableHeadless: true,
-            minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
-            // Android options
-            forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
-            stopOnTerminate: false,
-            startOnBoot: true,
-            requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
-            requiresCharging: false,      // Default
-            requiresDeviceIdle: false,    // Default
-            requiresBatteryNotLow: false, // Default
-            requiresStorageNotLow: false  // Default
-        }, async (taskId) => {
-            console.log("[js] Received background-fetch event: ", taskId);
-            // Required: Signal completion of your task to native code
-            // If you fail to do this, the OS can terminate your app
-            // or assign battery-blame for consuming too much background-time
-            BackgroundFetch.finish(taskId);
-        }, (error) => {
-            console.log("[js] RNBackgroundFetch failed to start");
-        });
-
-        // Optional: Query the authorization status.
-        BackgroundFetch.status((status) => {
-            switch (status) {
-                case BackgroundFetch.STATUS_RESTRICTED:
-                    console.log("BackgroundFetch restricted");
-                    break;
-                case BackgroundFetch.STATUS_DENIED:
-                    console.log("BackgroundFetch denied");
-                    break;
-                case BackgroundFetch.STATUS_AVAILABLE:
-                    console.log("BackgroundFetch is enabled");
-                    break;
-            }
-        });
-
-*/       
+        /*
+                // Configure it.
+                BackgroundFetch.configure({
+                    enableHeadless: true,
+                    minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
+                    // Android options
+                    forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
+                    stopOnTerminate: false,
+                    startOnBoot: true,
+                    requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
+                    requiresCharging: false,      // Default
+                    requiresDeviceIdle: false,    // Default
+                    requiresBatteryNotLow: false, // Default
+                    requiresStorageNotLow: false  // Default
+                }, async (taskId) => {
+                    console.log("[js] Received background-fetch event: ", taskId);
+                    // Required: Signal completion of your task to native code
+                    // If you fail to do this, the OS can terminate your app
+                    // or assign battery-blame for consuming too much background-time
+                    BackgroundFetch.finish(taskId);
+                }, (error) => {
+                    console.log("[js] RNBackgroundFetch failed to start");
+                });
+        
+                // Optional: Query the authorization status.
+                BackgroundFetch.status((status) => {
+                    switch (status) {
+                        case BackgroundFetch.STATUS_RESTRICTED:
+                            console.log("BackgroundFetch restricted");
+                            break;
+                        case BackgroundFetch.STATUS_DENIED:
+                            console.log("BackgroundFetch denied");
+                            break;
+                        case BackgroundFetch.STATUS_AVAILABLE:
+                            console.log("BackgroundFetch is enabled");
+                            break;
+                    }
+                });
+        
+        */
 
 
         console.log("check getBluetoothScanPermission access permission...")
@@ -205,6 +207,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
         console.log("check requestLocationPermission access permission...")
         await requestLocationPermission()
 
+        // Pegando nome do usuário logado
+        let nomeUsuario = await AsyncStorage.getItem("nome")
+        nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "")
+        this.setState({ nomeUsuario: nomeUsuario })
 
     }
 
@@ -241,7 +247,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     device.name = 'SEM NOME';
                 }
 
-               // Quando encontrar o dispositivo encerra o processo de scan.    
+                // Quando encontrar o dispositivo encerra o processo de scan.    
                 if (device.name === 'T1S') {
                     manager.stopDeviceScan();
 
@@ -250,11 +256,11 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
                     let lista = this.state.dadosservices.filter((index) => index.name != 'SEM NOME');
                     this.setState({ dados: lista });
-                }               
+                }
 
                 console.log(device.name)
 
-        
+
             });
         } catch (err) {
             console.log("scanAndConnect" + err);
@@ -277,7 +283,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             if (!isConnected) {
                 device = await manager.connectToDevice(device.id)
                 this.setState({ deviceDados: device })
-                await AsyncStorage.setItem('asyncdeviceID',device.id)
+                await AsyncStorage.setItem('asyncdeviceID', device.id)
                 setTimeout(() => {
                     this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true });
                 }, 0);
@@ -421,7 +427,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     })
 
                     // Enviando dados para dashboard
-                    await this.sendDataCloud(hex6,hex7,hex8,hex9)
+                    await this.sendDataCloud(hex6, hex7, hex8, hex9)
 
                 } else if (hex2 === 5) {
                     this.setState({ temperatura: hex[6] + '.' + hex[7] })
@@ -444,7 +450,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             await manager.cancelDeviceConnection(device.id);
             console.log("Desconectando ... ");
             this.setState({ conectando: "Desconectado.", corIconBluetooth: 'gray', connected: false });
-            await AsyncStorage.setItem('asyncdeviceID','')
+            await AsyncStorage.setItem('asyncdeviceID', '')
             Alert.alert("Instant Check:", "Desconectado!");
         } else {
             this.setState({ conectando: "Sem dispositivo conectado.", corIconBluetooth: 'gray' });
@@ -470,7 +476,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             })
         }
 
-        if (msg.item === "Medição completa") {
+        if (msg.item === "MULTIMEDIÇÃO") {
             this.novaMedicao(this.state.deviceDados)
         }
 
@@ -596,34 +602,36 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
 
     sendDataCloud = async (frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any) => {
-        try {    
+
+        let id_patient = await AsyncStorage.getItem('id_patient')
+        try {
             const MonitoringHistoryModel = {
                 frequenciaCardiaca: frequenciaCardiaca,
                 oxigenio: oxigenio,
                 hiperTensao: hiperTensao,
                 hipoTensao: hipoTensao,
                 temperatura: this.state.temperatura,
-                id_patient: 1,
+                id_patient: id_patient,
                 id_firm: 1,
                 id_monitoringstatus: 1,
                 id_user: 1,
-            } 
-  
+            }
+
             // envia dados para a tabela de monitoramento
             var { data: token } = await api.post("monitoring/sendDataCloud", "data=" + JSON.stringify(MonitoringHistoryModel));
-    
+
             //Passando o status da consulta, em caso de SUCESSO ou ERRO
             if (token["status"] === 'sucesso') {
                 console.log('sendDataCloud', ' Sucesso !')
             } else {
                 console.log('sendDataCloud', 'Dados incorretos !')
             }
-                console.log("sendDataCloud")                 
-           } catch (err) {
+            console.log("sendDataCloud")
+        } catch (err) {
             console.log(err)
         }
-   }
-    
+    }
+
 
 
     render() {
@@ -650,22 +658,23 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                     <View style={styles.cardBorderPersonal}>
                         <View style={{ height: 0 }}>
-                            <Image
+                            <FontAwesome5 name="portrait" size={70} color='navy'> </FontAwesome5>
+                            {/* <Image
                                 style={styles.tinyLogo}
                                 source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/alas.png' }}
-                            />
+                            /> */}
                         </View>
-                        <View style={{ paddingLeft: 100, paddingTop: 10 }}  >
-                            <Text style={styles.titleText} >Alas Jackson  </Text>
+                        <View style={{ paddingLeft: 100, paddingTop: 3 }}  >
+                            <Text style={styles.titleText} > {this.state.nomeUsuario}   </Text>
                             <TouchableOpacity onPress={() => this.scanAndConnect()} >
-                                <View style={{ flexDirection: "row", paddingTop: 5 }}>
+                                <View style={{ flexDirection: "row", paddingTop: 17 }}>
 
                                     {this.state.connected ?
-                                        <FontAwesome5 name="bluetooth" size={15} color='green'> Conectado ! </FontAwesome5> :
-                                        <FontAwesome5 name="bluetooth" size={15} color={this.state.corIconBluetooth}> </FontAwesome5>
+                                        <FontAwesome5 name="bluetooth" size={23} color='green'> Conectado ! </FontAwesome5> :
+                                        <FontAwesome5 name="bluetooth" size={23} color={this.state.corIconBluetooth}> </FontAwesome5>
                                     }
 
-                                    <Text style={{ color: 'gray', fontFamily: '', fontWeight: '400', textAlign: 'right', paddingLeft: 4 }}>
+                                    <Text style={{ color: 'gray', fontFamily: '', fontWeight: '400', textAlign: 'right', paddingLeft: 4, fontSize: 20 }}>
                                         {this.state.connected ? '' : 'Desconectado'}
                                     </Text>
 
@@ -678,12 +687,12 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                     <SectionList
                         sections={[
-                            { title: 'MEUS DADOS:', data: ['Perfil', 'Saúde e bem-estar'] },
-                            { title: 'INDICADORES:', data: ['Medição completa', 'Alertas', 'Histórico'] },
+                            // { title: 'MEUS DADOS:', data: ['Perfil', 'Saúde e bem-estar'] },
+                            { title: 'INDICADORES:', data: ['MULTIMEDIÇÃO', 'Alertas', 'Histórico'] },
                         ]}
                         renderItem={({ item }) =>
                             <TouchableOpacity onPress={() => this.abreModal({ item })} >
-                                <Text style={styles.item}><FontAwesome5 name="cog" size={12} color='gray'></FontAwesome5> {item}</Text>
+                                <Text style={styles.item}><FontAwesome5 name="cog" size={15} color='navy'></FontAwesome5> {item}</Text>
                             </TouchableOpacity>
                         }
                         renderSectionHeader={({ section }) =>
@@ -695,9 +704,9 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                     <Text style={styles.sectionHeader}>GERENCIAR</Text>
 
-                    <View style={{ flexDirection: "row", paddingLeft: 30, margin: 12 }}>
+                    <View style={{ flexDirection: "row", paddingLeft: 16, margin: 12 }}>
                         <FontAwesome5 name="sync" size={15} color="black"></FontAwesome5>
-                        <Text style={{ paddingLeft: 9 }}>{this.state.switchValue1 ? 'Login automático - Ativado' : 'Login automático - Desativado'}</Text>
+                        <Text style={{ paddingLeft: 9, fontSize: 15 }}>{this.state.switchValue1 ? 'Login automático - Ativado' : 'Login automático - Desativado'}</Text>
                         <Switch
                             style={{ paddingLeft: 50 }}
                             onValueChange={this.toggleSwitch1}
@@ -706,10 +715,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                     <TouchableOpacity
                         onPress={() => this.desconectar(this.state.deviceDados)} >
-                        <View style={{ flexDirection: "row", paddingLeft: 30, margin: 12 }}>
+                        <View style={{ flexDirection: "row", paddingLeft: 16, margin: 12 }}>
 
                             <FontAwesome5 name="sign-out-alt" size={20} color="red"></FontAwesome5>
-                            <Text style={{ paddingLeft: 9 }}>Desconectar dispositivo </Text>
+                            <Text style={{ paddingLeft: 9, fontSize: 15 }}>Desconectar dispositivo </Text>
                         </View>
                     </TouchableOpacity>
 
@@ -747,7 +756,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                         onPress={() => this.deviceconnect(item)}
                                     >
                                         <Card.Title
-                                            title={item.name}
+                                            title={item.name ? 'INSTANT CHECK - T1S' : 'INSTANT CHECK - T1S'}
                                             subtitle={item.connected ? 'Desconectar' : 'Conectar'}
                                             left={() => <FontAwesome5 name={"bluetooth"} size={25} color={this.state.corIconBluetooth} />}
                                         //right={() => <FontAwesome5 name={"bluetooth"} size={40} color={this.state.corIconBluetooth} /> }
@@ -984,7 +993,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
 
 
-                <View>
+                <View  >
                     <Modal
                         isVisible={this.state.modalMedicao}
                         animationIn={"slideInLeft"}
@@ -994,25 +1003,25 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                         <ScrollView>
 
-                            <Card>
-                                <Image
-                                    style={styles.tinyLogoMedicao}
-                                    source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/imagemMedicao.png' }}
-                                />
-                             {/*   <Title> <FontAwesome5 name={"cogs"} size={13} color="gray" />  <Text style={styles.titleTextTitulo} > Medição completa </Text>  </Title> */}
-                            </Card>
+                            <View style={styles.viewPrincipal}>
 
-                            <View style={{ margin: 1 }}>
+                                <Image
+                                    source={require('../../assets/logo.png')}
+                                    resizeMode="contain"
+                                    style={styles.logoMedicao}
+                                />
+                                <Text style={styles.textlogoMedicao} > MULTIMEDIÇÃO  </Text>
 
                                 <View style={{ flexDirection: "row", justifyContent: "center" }}>
 
                                     <TouchableOpacity onPress={this.carregaTelemetria}>
                                         <View style={styles.cardBorder}>
                                             <View >
-                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"heartbeat"} size={30} color="red" /> </Text>
-                                                <Text style={styles.titleTextTitulo} > Frequência Cardíaca </Text>
-                                                <Text style={styles.textText} >{this.state.frequenciaCardiaca}
-                                                    <Text style={styles.textTextDescricao}>bpm</Text> </Text>
+                                                {/*  <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"heartbeat"} size={30} color="navy" /> </Text> */}
+                                                <Text style={styles.textTextDescricao} > Frequência Cardíaca </Text>
+                                                <Text style={styles.titleTextTitulo}> ( bpm )</Text>
+                                                <Text style={styles.textText} >{this.state.frequenciaCardiaca}</Text>
+
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -1020,12 +1029,11 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                     <TouchableOpacity onPress={this.carregaTelemetria}>
                                         <View style={styles.cardBorder}>
                                             <View >
-                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"stethoscope"} size={30} color="gray" /> </Text>
-                                                <Text style={styles.titleTextTitulo} > Pressão arterial </Text>
-                                                <Text style={styles.textText}>{this.state.hiperTensao}
-                                                    <Text style={styles.textTextDescricao}>/</Text>
-                                                    <Text style={styles.textText} >{this.state.hipoTensao} </Text>
-                                                    <Text style={styles.textTextDescricao}>mmhg</Text> </Text>
+                                                {/* <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"stethoscope"} size={30} color="navy" /> </Text> */}
+                                                <Text style={styles.textTextDescricao} > Pressão arterial </Text>
+                                                <Text style={styles.titleTextTitulo}> ( mmhg )</Text>
+                                                <Text style={styles.textText}>{this.state.hiperTensao}/{this.state.hipoTensao}</Text>
+
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -1037,10 +1045,12 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                     <TouchableOpacity onPress={this.carregaTelemetria}>
                                         <View style={styles.cardBorder}>
                                             <View >
-                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"tint"} size={30} color="black" /> </Text>
-                                                <Text style={styles.titleTextTitulo} > Saturação do oxigênio no sangue </Text>
-                                                <Text style={styles.textText} >{this.state.oxigenio}
-                                                    <Text style={styles.textTextDescricao}>%</Text>  </Text>
+                                                {/* <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"tint"} size={30} color="navy" /> </Text> */}
+                                                <Text style={styles.textTextDescricao} > Saturação do oxigênio </Text>
+                                                <Text style={styles.titleTextTitulo}>( SpO2 % )</Text>
+                                                <Text style={styles.textText} >{this.state.oxigenio}</Text>
+                                                <Text style={styles.textTextDescricao} >{this.state.oxigenio > 90 ? "Normal" : "Atenção"}   </Text>
+
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -1049,10 +1059,12 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                     <TouchableOpacity onPress={this.carregaTelemetria}>
                                         <View style={styles.cardBorder}>
                                             <View >
-                                                <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"thermometer-half"} size={30} color="green" /> </Text>
-                                                <Text style={styles.titleTextTitulo} > Temperatura  </Text>
-                                                <Text style={styles.textText} >  {this.state.temperatura}
-                                                    <Text style={styles.textTextDescricao}>°C </Text> </Text>
+
+                                                <Text style={styles.textTextDescricao} > Temperatura  </Text>
+                                                <Text style={styles.titleTextTitulo}>( °C ) </Text>
+                                                <Text style={styles.textText} >{this.state.temperatura}</Text>
+                                                <Text style={styles.textTextDescricao} >{this.state.temperatura > 38 ? "Atenção" : "Normal"}   </Text>
+
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -1061,24 +1073,23 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                                 <View style={{ padding: 5 }}>
                                     {this.state.loadingMedicao &&
-                                        <ActivityIndicator size={"small"} color="red" style={{ marginTop: 1, justifyContent: "center" }} />
+                                        <ActivityIndicator size={"large"} color="red" style={{ marginTop: 1, justifyContent: "center" }} />
                                     }
                                 </View>
 
                             </View>
 
+                            <View style={{ alignContent: "flex-end", justifyContent: "flex-end", backgroundColor: "white", width: 90, marginTop: 30 }}>
 
+                                <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", margin: 3, paddingTop: 1, paddingLeft: 0 }}
+                                    onPress={this.fechaModal} >
+                                    <FontAwesome5 name='sign-out-alt' color='navy' size={17} > Sair </FontAwesome5>
+                                </TouchableOpacity>
+
+                            </View>
 
                         </ScrollView>
 
-                        <View style={{ flexDirection: "row", justifyContent: "center", backgroundColor: "white" }}>
-
-                            <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", margin: 3, paddingTop: 1, paddingLeft: 0 }}
-                                onPress={this.fechaModal} >
-                                <FontAwesome5 name='sign-out-alt' color='black' size={17} > Sair </FontAwesome5>
-                            </TouchableOpacity>
-
-                        </View>
 
                     </Modal>
                 </View>
@@ -1101,6 +1112,28 @@ const styles = StyleSheet.create({
         height: window.height,
         paddingTop: 22
     },
+    logoMedicao: {
+        marginTop: 5 ,
+        width: 200,
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+    },
+    textlogoMedicao: {
+        fontSize: 15, 
+        color: "navy",
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+        marginBottom:20,
+    },
+    viewPrincipal: {
+        //marginTop: window.height/7.9 ,
+    },
     scroll: {
         flex: 1,
         backgroundColor: '#f0f0f0',
@@ -1110,25 +1143,27 @@ const styles = StyleSheet.create({
         margin: 10
     },
     textText: {
-        fontSize: 18,
-        color: "red",
+        fontSize: 28,
+        color: "navy",
         fontWeight: "bold",
         alignContent: "center",
         alignItems: "center",
         alignSelf: "center",
         textAlign: "center",
         textAlignVertical: "center",
+        marginTop: 12,
     },
     textTextDescricao: {
-        fontSize: 11,
-        color: "#87CEFA",
-        //fontWeight: "bold",
-        //marginTop: "2%",
+        fontSize: 12,
+        color: "navy",
+        fontWeight: "bold",
+        marginTop: 10,
         alignContent: "center",
         alignItems: "center",
         alignSelf: "center",
         textAlign: "center",
         textAlignVertical: "center",
+        //fontWeight: "bold",
     },
     titleText: {
         fontSize: 18,
@@ -1142,23 +1177,33 @@ const styles = StyleSheet.create({
         alignSelf: "center",
         textAlign: "center",
         textAlignVertical: "center",
+        // marginTop: 10,
     },
     cardBorder: {
         backgroundColor: "white",
         flex: 1,
-        padding: 10,
-        margin: 5,
-        marginTop: 20,
+        //padding: 10,
+        //margin: 50, 
+        marginRight: 10,
+        marginBottom: 10,
+        marginTop: 10,
+        marginLeft: 10,
 
         width: 133,
-        //height: 150,
+        height: 160,
 
         borderColor: "gray",
-        borderWidth: 0.3,
-        borderRadius: 2,
+        borderWidth: 1,
+
+        borderRadius: 0,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+
         borderBottomWidth: 0,
-        shadowColor: '#000',
-        shadowOffset: { width: 10, height: 10 },
+        shadowColor: 'yellow',
+        shadowOffset: { width: 50, height: 50 },
         shadowOpacity: 3,
         shadowRadius: 10,
         elevation: 15,
@@ -1210,7 +1255,7 @@ const styles = StyleSheet.create({
         paddingLeft: 30,
         paddingBottom: 10,
         paddingTop: 10,
-        fontSize: 15,
+        fontSize: 16,
         height: 44,
     },
     modal: {
@@ -1228,12 +1273,20 @@ const styles = StyleSheet.create({
         //justifyContent: undefined,
     },
     modalMedicao: {
-        // backgroundColor: '#dcdcdc',
+        //backgroundColor: '#F8F8FF',
         backgroundColor: 'white',
-        margin: 30, // This is the important style you need to set
-        marginBottom: 80,
+        //margin: window.width/2, // This is the important style you need to set
+        marginTop: window.width / 15,
+        //width: window.width,
+        //height: window.height,
+        //marginBottom: 1,
         //alignItems: undefined,
         //justifyContent: undefined,
+        //flex: 1,
+        //backgroundColor: 'transparent',
+        justifyContent: 'center',
+        //position: 'absolute'
+
     },
 });
 
