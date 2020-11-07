@@ -187,6 +187,10 @@ const checkmonitoringschedule = async (device) => {
         await setupNotifications(device)
         await measureTempNow(device)
         await novaMedicao(device)
+    }else{
+        //desconecta device T1S
+        console.log("Não é hora de fazer a medição, bye!")
+        await device.cancelConnection()
     }
 }
 
@@ -196,13 +200,11 @@ const novaMedicao = async (device) => {
     try {
 
         if (device) {
-            console.log('novaMedicao 1')
+
             const services = await device.services();
 
             let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
             let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
-
-            console.log('novaMedicao 2')
 
             let comandoAll = "qwAE/zKAAQ==" // -- 
             await manager.writeCharacteristicWithResponseForDevice(device.id,
@@ -211,23 +213,16 @@ const novaMedicao = async (device) => {
             )
                 .then(characteristic => {
                     //this.setState({ info4: characteristic.value })
-                    console.log('novaMedicao 3')
-
                 })
                 .catch(err => {
                     console.log(" valores > " + err)
                     console.log('novaMedicao 4')
 
                 });
-            console.log('novaMedicao 5')
 
             // Tratando o tempo de execucao da leitura da medição    
             let startMin = moment(new Date()).format("HH:mm")
             this.state.startMin = startMin
-
-            console.log('novaMedicao 7')
-
-            //return () => this.clearTimeout(timeout);
 
         } else {
             console.log("Instant Check:", "Sem dispositivo conectado");

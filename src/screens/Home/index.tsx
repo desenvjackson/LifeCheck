@@ -209,7 +209,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
         // Pegando nome do usuário logado
         let nomeUsuario = await AsyncStorage.getItem("nome")
-        nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "")
+        nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ","")
         this.setState({ nomeUsuario: nomeUsuario })
 
     }
