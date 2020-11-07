@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
+import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text, AppState } from 'react-native';
 import { NavigationScreenProp } from 'react-navigation';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
@@ -29,6 +29,9 @@ interface State {
     login: string;
     mSenha: boolean;
 }
+
+
+
 
 // Tela em que o login é realizado.
 // A tela exibe os campos de usuário e senha, e o retono
@@ -144,6 +147,8 @@ export default class LoginScreen extends React.Component<Props, State> {
         this.setState({ mSenha: true })
     }
 
+    componentDidMount = async () =>{
+    }
 
     render() {
         return (

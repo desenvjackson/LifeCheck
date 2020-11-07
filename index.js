@@ -2,7 +2,7 @@
  * @format
  */
 
-import { AppRegistry, ShadowPropTypesIOS } from 'react-native';
+import { AppState, AppRegistry, ShadowPropTypesIOS, Alert } from 'react-native';
 import App from './App';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { name as appName } from './app.json';
@@ -24,21 +24,34 @@ const manager = new BleManager();
 this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedFim: 0 }
 this.state = { frequenciaCardiaca: "", oxigenio: "", hiperTensao: "", hipoTensao: "", temperatura: "" }
 
-/*
+
+
 let ScanOptions = { scanMode: ScanMode.LowLatency }
 manager.startDeviceScan(null, ScanOptions, (error, device) => {
     if (error) {
         // Handle error (scanning will be stopped automatically)r
         console.log("Error - startDeviceScan : " + error);
         return
-    }
-
-    if (device.name != null) {
-        compareID(device)
-    }
-
+    }    
+    compareID(device)
 });
-*/
+
+
+
+
+
+AppState.addEventListener('change', state => {
+    if (state === 'active') {
+               console.log("active" );
+   } else if (state === 'background') {
+             console.log("background" );     
+             Alert.alert("IC","Não fecha o APP!")
+    } else if (state === 'inactive') {       
+            console.log("inactive" ); 
+    }
+});
+
+
 
 // Configure it.
 BackgroundFetch.configure({
@@ -55,9 +68,6 @@ BackgroundFetch.configure({
     requiresStorageNotLow: false  // Default
 }, async (taskId) => {
     console.log("[js] Received background-fetch event: ", taskId);
-    // Required: Signal completion of your task to native code
-    // If you fail to do this, the OS can terminate your app
-    // or assign battery-blame for consuming too much background-time
     BackgroundFetch.finish(taskId);
 }, (error) => {
     console.log("[js] RNBackgroundFetch failed to start");
@@ -78,41 +88,54 @@ BackgroundFetch.status((status) => {
     }
 });
 
-  
+
+
 const MyHeadlessTask = async (event) => {
     // Get task id from event {}:
     let taskId = event.taskId;
     console.log('[BackgroundFetch HeadlessTask] start: ', taskId);
 
+    let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
+
     try {
-                let ScanOptions = { scanMode: ScanMode.LowLatency }
-                manager.startDeviceScan(null, ScanOptions, (error, device) => {
-                    if (error) {
-                        // Handle error (scanning will be stopped automatically)
-                        console.log("Error - startDeviceScan : " + error);
-                        return
-                    }
-                    
-                    if (device.name != null) {
-                        compareID(device)
-                    }
-                
-                });
+        let ScanOptions = { scanMode: ScanMode.LowLatency }
+        manager.startDeviceScan(null, ScanOptions, (error, device) => {
+            if (error) {
+                // Handle error (scanning will be stopped automatically)
+                console.log("Error - startDeviceScan : " + error);
+                return
+            }
+
+            if (device.name != null) {
+                compareID(device)
+            }
+
+        });
 
     } catch (err) {
         // some error handling
         console.log("scanAndConnect" + err);
-        BackgroundFetch.finish(taskId);
     }
 
     // Required:  Signal to native code that your task is complete.
     // If you don't do this, your app could be terminated and/or assigned
     // battery-blame for consuming too much time in background.
-    BackgroundFetch.finish(taskId);
+        BackgroundFetch.finish(taskId);
 }
 
 // Register your BackgroundFetch HeadlessTask
-BackgroundFetch.registerHeadlessTask(MyHeadlessTask);
+   BackgroundFetch.registerHeadlessTask(MyHeadlessTask);
+
+
+   
+const ALAS = async (device) => {
+    console.log("444")
+    let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')    
+    device.cancelConnection()      
+    return
+}
+
+
 
 const compareID = async (device) => {
 
@@ -134,6 +157,8 @@ const compareID = async (device) => {
             this.state.devicedados = device
 
             // Validando se tá na hora de realizar uma medição
+            const logTeste = { device_id: device.id }
+            var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste));
             await checkmonitoringschedule(device)
 
         } else {
@@ -292,8 +317,8 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
         var d = moment.duration(ms);
         var s = moment.utc(ms).format("mm");
 
-        console.log(this.state.allMedFim)
-        console.log(this.state.tempMedFim)
+        //console.log(this.state.allMedFim)
+        //console.log(this.state.tempMedFim)
 
         if (s > 1 && this.state.allMedFim === 0) {
             await measureAllStop(this.state.devicedados)
@@ -301,6 +326,7 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
 
         if (s > 2 && this.state.tempMedFim === 0) {
             await measureTempStop(this.state.devicedados)
+            await this.state.devicedados.cancelConnection()
         }
 
         if (error) {
@@ -330,13 +356,12 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
                 console.log(this.state.temperatura)
             }
 
-            console.log(hex)
+            //console.log(hex)
         }
     } catch (err) {
         console.log("onUARTSubscriptionUpdate_ALL" + JSON.stringify(err))
     }
 
-    console.log("onUARTSubscriptionUpdate_ALL = FIM ")
 }
 
 const measureTempNow = async (device) => {
