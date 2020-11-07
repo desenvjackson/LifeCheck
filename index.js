@@ -25,7 +25,7 @@ this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedF
 this.state = { frequenciaCardiaca: "", oxigenio: "", hiperTensao: "", hipoTensao: "", temperatura: "" }
 
 
-
+/*
 let ScanOptions = { scanMode: ScanMode.LowLatency }
 manager.startDeviceScan(null, ScanOptions, (error, device) => {
     if (error) {
@@ -35,7 +35,7 @@ manager.startDeviceScan(null, ScanOptions, (error, device) => {
     }    
     compareID(device)
 });
-
+*/
 
 
 
@@ -176,10 +176,10 @@ const compareID = async (device) => {
 
 const checkmonitoringschedule = async (device) => {
     //Recuperando o ultimo usuário logado
-    let id_patient = await AsyncStorage.getItem("login")
+    let id_patient = await AsyncStorage.getItem("id_patient")
 
     // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
-    const MonitoringPatient = { id_patient: 1 }
+    const MonitoringPatient = { id_patient: id_patient }
     var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));
 
     //Passando o status da consulta, em caso de SUCESSO ou ERRO
