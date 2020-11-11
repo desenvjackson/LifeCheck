@@ -57,8 +57,8 @@ export default class LoginScreen extends React.Component<Props, State> {
         // Cria o state do componente
         this.state = {
             loading: true,
-            usuario: "desenvjackson@gmail.com",
-            senha: "123456",
+            usuario: "",
+            senha: "",
             error: '',
             login: "",
             mSenha: true,
