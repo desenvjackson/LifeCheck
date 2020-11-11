@@ -44,7 +44,7 @@ AppState.addEventListener('change', state => {
     } else if (state === 'background') {
         console.log("background")
         desconectar()
-       } else if (state === 'inactive') {
+    } else if (state === 'inactive') {
         console.log("inactive");
     }
 });
@@ -123,9 +123,11 @@ const MyHeadlessTask = async (event) => {
                 return
             }
 
-            if (device.name != null) {
+            if (device.id === asyncdeviceID) {
                 const logTeste = { device_id: device.id, description: "MyHeadlessTask - startDeviceScan" }
-                var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste));
+                var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste))
+                
+                //realiza conexão com o device cadastrado
                 compareID(device)
             }
 
@@ -159,7 +161,7 @@ const desconectar = async () => {
             await manager.cancelDeviceConnection(asyncdeviceID)
             const logTestedesconectar = { device_id: asyncdeviceID, description: "DESCONECTADO COM SUCESSO" }
             var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTestedesconectar))
-        }    
+        }
     } catch (err) {
         console.log("ERROR desconectar : " + err)
         const logTesteCID = { device_id: asyncdeviceID, description: "Erro DESCONECTAR" }
@@ -179,8 +181,15 @@ const compareID = async (device) => {
 
             manager.stopDeviceScan()
 
+            // Primeira tentativa de conexão 
             device = await manager.connectToDevice(device.id)
             console.log("isConnected - else if : " + "Conectei....")
+
+            // Verifica se o dipositivo tá conectado - Revalida
+            let isConnected = await device.isConnected()
+            if (!isConnected) {
+                device = await manager.connectToDevice(device.id)
+            }
 
             // #### iniciar medição básica
             this.state.tempMedFim = 0
@@ -320,12 +329,7 @@ const novaMedicao = async (device) => {
 const measureAllStop = async (device) => {
 
     console.log("measureAllStop = INICIO")
-
-    //const services = await device.services();
-
-    if (this.state.allMedFim == 1) {
-        return
-    }
+    this.state.allMedFim = 1
 
     if (!device) {
         console.log("Dispositivo desconectado")
@@ -347,8 +351,6 @@ const measureAllStop = async (device) => {
                     console.log(" valores > measureAllStop: " + err)
                     //this.setState({ info4: "Escrevendo..." + err })
                 });
-
-            this.state.allMedFim = 1
 
         } catch (err) {
             console.log("measureAllStop : " + err)
@@ -410,10 +412,7 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
             await measureTempStop(this.state.devicedados)
 
             // Enviando dados para central
-            await sendDataCloud()
-
-            //Enviando PUSH NOTIFICATION - Sobre o inicio da medição
-            await sendNotificationMeasure(this.state.devicedados, 2)
+            // await sendDataCloud()
 
             // await this.state.devicedados.cancelConnection()
         }
@@ -493,6 +492,20 @@ const measureTempNow = async (device) => {
 const measureTempStop = async (device) => {
     //const services = await device.services();
 
+    if (this.state.tempMedFim === 0) {
+        //Enviando PUSH NOTIFICATION - Sobre o inicio da medição
+        await sendNotificationMeasure(this.state.devicedados, 2)
+
+         // Enviando dados para central
+         await sendDataCloud()
+
+        //Fechando conexão BLE com o device.
+
+        await desconectar()
+    }
+
+    this.state.tempMedFim = 1
+
     if (!device) {
         // this.setState({ info4: "Dispositivo desconectado" })
         return
@@ -513,9 +526,6 @@ const measureTempStop = async (device) => {
                 .catch(err => {
                     console.log(" valores > measureTempStop: " + err)
                 });
-
-            this.state.tempMedFim = 1
-            // await sendDataCloud()
 
         } catch (err) {
             console.log(err)
@@ -568,9 +578,6 @@ const sendDataCloud = async () => {
 
         const logsendData = { device_id: asyncdeviceID, description: this.state.frequenciaCardiaca + " / " + this.state.oxigenio + " / " + this.state.hiperTensao + " / " + this.state.hipoTensao + " / " + this.state.temperatura }
         var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logsendData))
-
-        //Fechando conexão BLE com o device.
-        await desconectar()
 
     } catch (err) {
         console.log(err)
