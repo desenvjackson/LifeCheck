@@ -4,7 +4,7 @@ import { NavigationScreenProp, StackActions, NavigationActions } from 'react-nav
 import TextInputMask from 'react-native-text-input-mask';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Styles, { Variables } from '../../styles';
-import Screen from '../Screen';
+//import Screen from '../Screen';
 //import * as EmailValidator from 'email-validator';
 //import cep from 'cep-promise'
 //import { Grid, Row, Col } from 'react-native-easy-grid';
@@ -270,9 +270,8 @@ export default class novoUsuarioScreen extends React.Component<Props, State> {
 
     render() {
         return (
-            <Screen
+            <View
                 {...this.props}
-                usaLoading={false}
                 style={{
                     backgroundColor: Variables.colors.primary,
                     padding: 20
@@ -417,7 +416,8 @@ export default class novoUsuarioScreen extends React.Component<Props, State> {
                 {!this.state.icon &&
                     <ActivityIndicator size={"large"} color={Variables.colors.black} style={{ marginTop: 40 }} />
                 }
-            </Screen>
+                
+            </View>
 
         );
     }

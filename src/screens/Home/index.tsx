@@ -13,7 +13,7 @@ import {
     StatusBar,
     ScrollView,
     Image,
-    SectionList
+    SectionList, AppState
 } from 'react-native';
 import { Card, Title, Paragraph, TextInput, Switch } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -29,9 +29,8 @@ import {
 } from 'react-native-ble-plx';
 import Modal from 'react-native-modal';
 import { Buffer } from 'buffer';
-
-import BackgroundFetch from "react-native-background-fetch";
 import api from '../../services/index'
+import OneSignal from 'react-native-onesignal';
 
 interface Props {
     navigation: NavigationScreenProp<any, any>;
@@ -64,60 +63,6 @@ interface State {
 }
 
 const manager = new BleManager();
-
-async function getBluetoothScanPermission() {
-    const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-        {
-            title: 'Bluetooth Permission',
-            message:
-                'In the next dialogue, Android will ask for permission for this ' +
-                'App to access your location. This is needed for being able to ' +
-                'use Bluetooth to scan your environment for peripherals.',
-            buttonPositive: 'OK'
-        },
-    )
-    if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('BleManager.scan will *NOT* detect any peripherals! = NOT')
-    } else {
-        console.log('BleManager.scan will detect any peripherals! = OK')
-    }
-}
-
-
-async function requestLocationPermission() {
-    try {
-        let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-                title: 'Permissão para usar a localização',
-                message: 'O aplicativo precisa de permissão para utilizar a sua localização',
-                buttonNegative: 'Cancelar',
-                buttonPositive: 'OK',
-            });
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-            console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
-        } else {
-            console.log("PermissionsAndroid.RESULTS.GRANTED = NOT PERMISSION");
-        }
-    } catch (error) {
-        console.log(error);
-    }
-
-    if (Platform.OS === 'android')
-        LocationServicesDialogBox.checkLocationServicesIsEnabled({
-            message: "<h2>Use Location?</h2> \
-                              This app wants to change your device settings:<br/><br/>\
-                              Use GPS for location<br/><br/>",
-            ok: "YES",
-            cancel: "NO"
-        }).then(() => {
-            // locationTracking(dispatch, getState, geolocationSettings)
-        })
-
-}
-
-
-
 
 
 export default class HomeScreen extends PureComponent<Props, State> {
@@ -158,61 +103,125 @@ export default class HomeScreen extends PureComponent<Props, State> {
         };
     }
 
-    componentDidMount = async () => {
-        /*
-                // Configure it.
-                BackgroundFetch.configure({
-                    enableHeadless: true,
-                    minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
-                    // Android options
-                    forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
-                    stopOnTerminate: false,
-                    startOnBoot: true,
-                    requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
-                    requiresCharging: false,      // Default
-                    requiresDeviceIdle: false,    // Default
-                    requiresBatteryNotLow: false, // Default
-                    requiresStorageNotLow: false  // Default
-                }, async (taskId) => {
-                    console.log("[js] Received background-fetch event: ", taskId);
-                    // Required: Signal completion of your task to native code
-                    // If you fail to do this, the OS can terminate your app
-                    // or assign battery-blame for consuming too much background-time
-                    BackgroundFetch.finish(taskId);
-                }, (error) => {
-                    console.log("[js] RNBackgroundFetch failed to start");
-                });
-        
-                // Optional: Query the authorization status.
-                BackgroundFetch.status((status) => {
-                    switch (status) {
-                        case BackgroundFetch.STATUS_RESTRICTED:
-                            console.log("BackgroundFetch restricted");
-                            break;
-                        case BackgroundFetch.STATUS_DENIED:
-                            console.log("BackgroundFetch denied");
-                            break;
-                        case BackgroundFetch.STATUS_AVAILABLE:
-                            console.log("BackgroundFetch is enabled");
-                            break;
-                    }
-                });
-        
-        */
 
+    getBluetoothScanPermission = async () => {
+        const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+            {
+                title: 'Bluetooth Permission',
+                message:
+                    'In the next dialogue, Android will ask for permission for this ' +
+                    'App to access your location. This is needed for being able to ' +
+                    'use Bluetooth to scan your environment for peripherals.',
+                buttonPositive: 'OK'
+            },
+        )
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            console.log('BleManager.scan will *NOT* detect any peripherals! = NOT')
+        } else {
+            console.log('BleManager.scan will detect any peripherals! = OK')
+        }
+    }
+
+    requestLocationPermission = async () => {
+        try {
+            let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                {
+                    title: 'Permissão para usar a localização',
+                    message: 'O aplicativo precisa de permissão para utilizar a sua localização',
+                    buttonNegative: 'Cancelar',
+                    buttonPositive: 'OK',
+                });
+            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
+            } else {
+                console.log("PermissionsAndroid.RESULTS.GRANTED = NOT PERMISSION");
+            }
+        } catch (error) {
+            console.log(error);
+        }
+        if (Platform.OS === 'android')
+            LocationServicesDialogBox.checkLocationServicesIsEnabled({
+                message: "<h2>Use Location?</h2> \
+                                  This app wants to change your device settings:<br/><br/>\
+                                  Use GPS for location<br/><br/>",
+                ok: "YES",
+                cancel: "NO"
+            }).then(() => {
+                // locationTracking(dispatch, getState, geolocationSettings)
+            })
+    }
+
+    componentDidMount = async () => {
+
+        // Função ONESIGNAL 
+        this.oneSignal();
 
         console.log("check getBluetoothScanPermission access permission...")
-        await getBluetoothScanPermission()
+        await this.getBluetoothScanPermission()
 
         console.log("check requestLocationPermission access permission...")
-        await requestLocationPermission()
+        await this.requestLocationPermission()
 
         // Pegando nome do usuário logado
         let nomeUsuario = await AsyncStorage.getItem("nome")
-        nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ","")
+        nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ", "")
         this.setState({ nomeUsuario: nomeUsuario })
-
     }
+
+
+
+
+    // oneSignal
+    oneSignal = async () => {
+        try {
+            await OneSignal.init("6d02ccd7-05bb-4089-9d66-58caa11080a4", { kOSSettingsKeyAutoPrompt: true });
+            await OneSignal.addEventListener('received', this.onReceived);
+            await OneSignal.addEventListener('opened', this.onOpened);
+            await OneSignal.addEventListener('ids', this.onIds.bind(this));
+            await OneSignal.enableVibrate(true);
+            await OneSignal.inFocusDisplaying(2);
+        }
+        catch (err) {
+            console.log(err);
+        }
+    }
+
+    // oneSignal
+    onReceived(notification) {
+        console.log("Notification received: ", notification);
+    }
+
+    // oneSignal
+    onOpened(openResult) {
+        //console.log('Message: ', openResult.notification.payload.body);
+        //console.log('Data: ', openResult.notification.payload.additionalData);
+        //console.log('isActive: ', openResult.notification.isAppInFocus);
+        //console.log('openResult: ', openResult);
+    }
+
+    // oneSignal
+    onIds = async (deviceOneSignal) => {
+        // console.log('Device info: ', deviceOneSignal);
+        // console.log('player id: ', deviceOneSignal.userId);
+
+        // recupera o id do paciente logado
+        let id_patient = await AsyncStorage.getItem("id_patient")
+        //console.log('idPatient - ONESIGNAL: ', id_patient );
+
+        // recupera id do relogio/device
+        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
+
+        //API para atualizar o codigo do ONESIGNAL do paciente
+        try {
+            const oneSignal = { id_patient: id_patient, deviceOneSignal: deviceOneSignal.userId, id_device: asyncdeviceID }
+            var { data: returnData } = await api.post("monitoring/updateCodOneSignalPatient", "data=" + JSON.stringify(oneSignal));
+        } catch (err) {
+            // some error handling
+            console.log("oneSignal" + err);
+        }
+    }
+
 
     UNSAFE_componentWillMount() {
         const subscription = manager.onStateChange((state) => {
@@ -270,20 +279,20 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     deviceconnect = async (device) => {
 
-        this.setState({ loading: true, dados: [], modal: false });
-        this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy' });
+        this.setState({ loading: true, dados: [], modal: false })
+        this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy' })
         console.log("Connecting to device :")
 
         // Verifica se o dipositivo tá conectado
         let isConnected = await device.isConnected()
-        manager.stopDeviceScan();
-
+        manager.stopDeviceScan()
 
         try {
             if (!isConnected) {
                 device = await manager.connectToDevice(device.id)
                 this.setState({ deviceDados: device })
                 await AsyncStorage.setItem('asyncdeviceID', device.id)
+                await this.oneSignal()
                 setTimeout(() => {
                     this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true });
                 }, 0);
@@ -296,10 +305,8 @@ export default class HomeScreen extends PureComponent<Props, State> {
             this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray' });
         }
 
-
         device = await device.discoverAllServicesAndCharacteristics();
         const services = await device.services();
-
 
         device.onDisconnected((error, disconnectedDevice) => {
             console.log('Disconnected ', disconnectedDevice.name)
@@ -308,7 +315,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
         // Active listenning notify 
         await this.setupNotifications(device);
-
     }
 
 
@@ -450,7 +456,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             await manager.cancelDeviceConnection(device.id);
             console.log("Desconectando ... ");
             this.setState({ conectando: "Desconectado.", corIconBluetooth: 'gray', connected: false });
-            await AsyncStorage.setItem('asyncdeviceID', '')
+            //await AsyncStorage.setItem('asyncdeviceID', '')
             Alert.alert("Instant Check:", "Desconectado!");
         } else {
             this.setState({ conectando: "Sem dispositivo conectado.", corIconBluetooth: 'gray' });
@@ -1113,23 +1119,21 @@ const styles = StyleSheet.create({
         paddingTop: 22
     },
     logoMedicao: {
-        marginTop: 5 ,
+        marginTop: 5,
         width: 200,
         alignContent: "center",
         alignItems: "center",
         alignSelf: "center",
-        textAlign: "center",
-        textAlignVertical: "center",
     },
     textlogoMedicao: {
-        fontSize: 15, 
+        fontSize: 15,
         color: "navy",
         alignContent: "center",
         alignItems: "center",
         alignSelf: "center",
         textAlign: "center",
         textAlignVertical: "center",
-        marginBottom:20,
+        marginBottom: 20,
     },
     viewPrincipal: {
         //marginTop: window.height/7.9 ,

@@ -4,7 +4,7 @@ import { NavigationScreenProp, StackActions, NavigationActions } from 'react-nav
 import TextInputMask from 'react-native-text-input-mask';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Styles, { Variables } from '../../styles';
-import Screen from '../Screen';
+//import Screen from '../Screen';
 
 interface Props {
     navigation: NavigationScreenProp<any, any>;

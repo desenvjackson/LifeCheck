@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-community/async-storage';
 import api from '../../services';
 import { UsuarioModel } from '../../models';
 
-import Screen from '../Screen';
+//import Screen from '../Screen';
 const leftOculto = '210%';
 const left = '130%';
 const botao = '38%';
@@ -57,8 +57,8 @@ export default class LoginScreen extends React.Component<Props, State> {
         // Cria o state do componente
         this.state = {
             loading: true,
-            usuario: "",
-            senha: "",
+            usuario: "desenvjackson@gmail.com",
+            senha: "123456",
             error: '',
             login: "",
             mSenha: true,
@@ -152,13 +152,13 @@ export default class LoginScreen extends React.Component<Props, State> {
 
     render() {
         return (
-            <Screen
+            <View
                 {...this.props}
-                usaLoading={false}
                 style={{
                     backgroundColor: Variables.colors.primary,
                     paddingLeft: 20,
                     paddingRight: 20,
+                    flex:1
                 }}
             >
 
@@ -302,7 +302,7 @@ export default class LoginScreen extends React.Component<Props, State> {
 
                 */}
 
-            </Screen>
+            </View>
 
         );
     }
