@@ -82,7 +82,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
             dadosservices: [],
             peripherals: new Map(),
             dadosservicesMAP: new Map(),
-            loading: true,
+            loading: false,
             scanning: false,
             erro: false,
             conectando: '',
@@ -153,6 +153,9 @@ export default class HomeScreen extends PureComponent<Props, State> {
     }
 
     componentDidMount = async () => {
+
+        //Ligando o bluetooth
+        manager.enable();
 
         // Função ONESIGNAL 
         this.oneSignal();
@@ -279,8 +282,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     deviceconnect = async (device) => {
 
-        this.setState({ loading: true, dados: [], modal: false })
-        this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy' })
+        //setTimeout(() => {
+        await this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy', loading: true, dados: [], modal: false })
+        //}, 0);
+
         console.log("Connecting to device :")
 
         // Verifica se o dipositivo tá conectado
@@ -290,19 +295,22 @@ export default class HomeScreen extends PureComponent<Props, State> {
         try {
             if (!isConnected) {
                 device = await manager.connectToDevice(device.id)
+                // Verifica se o dipositivo tá conectado - Revalida
+                let isConnected = await device.isConnected()
+                if (!isConnected) {
+                    device = await manager.connectToDevice(device.id)
+                }
                 this.setState({ deviceDados: device })
                 await AsyncStorage.setItem('asyncdeviceID', device.id)
                 await this.oneSignal()
-                setTimeout(() => {
-                    this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true });
-                }, 0);
+                this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true, loading: false });
             } else {
-                this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray' });
+                this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray', loading: false });
             }
         } catch (err) {
             // some error handling
             console.log("deviceconnect" + err);
-            this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray' });
+            this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray', loading: false });
         }
 
         device = await device.discoverAllServicesAndCharacteristics();
@@ -538,7 +546,8 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     novaMedicao = async (device) => {
 
-        // await this.setState({ loadingMedicao: true, modalMedicao: true }) 
+        // Limpando campos da última consulta.
+        await this.setState({ frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '' })
 
         if (device) {
             const services = await device.services();
@@ -680,9 +689,17 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                         <FontAwesome5 name="bluetooth" size={23} color={this.state.corIconBluetooth}> </FontAwesome5>
                                     }
 
-                                    <Text style={{ color: 'gray', fontFamily: '', fontWeight: '400', textAlign: 'right', paddingLeft: 4, fontSize: 20 }}>
-                                        {this.state.connected ? '' : 'Desconectado'}
-                                    </Text>
+                                    {this.state.loading &&
+                                        <>
+                                            <Text><ActivityIndicator size={"small"} color="red" style={{ marginTop: 10 }} /> Conectando... </Text>
+                                        </>
+                                    }
+
+                                    {!this.state.loading &&
+                                        <Text style={{ color: 'gray', fontFamily: '', fontWeight: '400', textAlign: 'right', paddingLeft: 4, fontSize: 20 }}>
+                                            {this.state.connected ? '' : 'Desconectado'}
+                                        </Text>
+                                    }
 
                                 </View>
                             </TouchableOpacity>
@@ -1079,13 +1096,13 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                                 <View style={{ padding: 5 }}>
                                     {this.state.loadingMedicao &&
-                                        <ActivityIndicator size={"large"} color="red" style={{ marginTop: 1, justifyContent: "center" }} />
+                                        <ActivityIndicator size={"large"} color="red" style={{ marginTop: 10, justifyContent: "center" }} />
                                     }
                                 </View>
 
                             </View>
 
-                            <View style={{ alignContent: "flex-end", justifyContent: "flex-end", backgroundColor: "white", width: 90, marginTop: 30 }}>
+                            <View style={{ alignItems: 'center', alignContent: "center", backgroundColor: "white", width: 90, marginTop: 30 }}>
 
                                 <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", margin: 3, paddingTop: 1, paddingLeft: 0 }}
                                     onPress={this.fechaModal} >
@@ -1134,6 +1151,7 @@ const styles = StyleSheet.create({
         textAlign: "center",
         textAlignVertical: "center",
         marginBottom: 20,
+        fontWeight: "bold",
     },
     viewPrincipal: {
         //marginTop: window.height/7.9 ,

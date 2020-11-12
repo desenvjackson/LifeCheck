@@ -38,6 +38,7 @@ manager.startDeviceScan(null, ScanOptions, (error, device) => {
 });
 */
 
+
 AppState.addEventListener('change', state => {
     if (state === 'active') {
         console.log("active");
@@ -52,7 +53,7 @@ AppState.addEventListener('change', state => {
 // Configure it.
 BackgroundFetch.configure({
     enableHeadless: true,
-    minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
+    minimumFetchInterval: 30,     // <-- minutes (15 is minimum allowed)
     // Android options
     forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
     stopOnTerminate: false,
@@ -110,6 +111,9 @@ const MyHeadlessTask = async (event) => {
     let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
     const logTeste2 = { device_id: asyncdeviceID, description: "Passo 01 - MyHeadlessTask" }
     var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste2));
+
+    //Ligando o bluetooth
+    manager.enable();
 
     try {
         let ScanOptions = { scanMode: ScanMode.LowLatency }

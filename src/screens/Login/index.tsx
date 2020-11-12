@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text, AppState } from 'react-native';
+import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text, ScrollView, StatusBar } from 'react-native';
 import { NavigationScreenProp } from 'react-navigation';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-community/async-storage';
 import api from '../../services';
 import { UsuarioModel } from '../../models';
 
-//import Screen from '../Screen';
+import Screen from '../Screen';
 const leftOculto = '210%';
 const left = '130%';
 const botao = '38%';
@@ -152,7 +152,7 @@ export default class LoginScreen extends React.Component<Props, State> {
 
     render() {
         return (
-            <View
+            <Screen
                 {...this.props}
                 style={{
                     backgroundColor: Variables.colors.primary,
@@ -162,147 +162,144 @@ export default class LoginScreen extends React.Component<Props, State> {
                 }}
             >
 
-                <View style={loginStyles.header}>
-                    <Image
-                        source={require('../../assets/logo.png')}
-                        style={loginStyles.logo}
-                        resizeMode="contain"
-                    />
-                </View>
+                <ScrollView>
+                    <View style={loginStyles.header}>
+                        <Image
+                            source={require('../../assets/logo.png')}
+                            style={loginStyles.logo}
+                            resizeMode="contain"
+                        />
+                    </View>
 
-                <View style={{
+                    <View style={{
 
-                    paddingLeft: 14,
-                    borderWidth: 3,
-                    borderColor: Variables.colors.gray,
-                    borderRadius: 20,
-                    flexDirection: 'row',
-                    alignContent: 'center',
-                    alignItems: 'center',
-                    marginBottom: 10
-                }}>
+                        paddingLeft: 14,
+                        borderWidth: 3,
+                        borderColor: Variables.colors.gray,
+                        borderRadius: 20,
+                        flexDirection: 'row',
+                        alignContent: 'center',
+                        alignItems: 'center',
+                        marginBottom: 10
+                    }}>
 
-                    <FontAwesome5 name={"envelope"} size={20} color={Variables.colors.black} />
-                    <TextInput
-                        style={[
+                        <FontAwesome5 name={"envelope"} size={20} color={Variables.colors.black} />
+                        <TextInput
+                            style={[
 
-                            {
-                                paddingLeft: 14,
-                                opacity: 0.7,
-                                color: Variables.colors.black
-                            }
-                        ]}
-                        placeholderTextColor={Variables.colors.black}
+                                {
+                                    paddingLeft: 14,
+                                    opacity: 0.7,
+                                    color: Variables.colors.black,
+                                    flex: 1,
+                                }
+                            ]}
+                            placeholderTextColor={Variables.colors.black}
+                            returnKeyType="next" blurOnSubmit={false}
+                            placeholder="Usuário"
+                            autoCapitalize='none'
+                            value={this.state.usuario}
+                            onSubmitEditing={() => { this.focusNextField('senha'); }}
+                            onChangeText={value => this.setState({ usuario: value })}
+                            ref={input => { this.inputs['usuario'] = input; }}
+                            keyboardType={'email-address'}
+                            maxLength={80} />
+                    </View>
 
-                        returnKeyType="next" blurOnSubmit={false}
-                        placeholder="Usuário"
-                        autoCapitalize='none'
-                        value={this.state.usuario}
-                        onSubmitEditing={() => { this.focusNextField('senha'); }} onChangeText={value => this.setState({ usuario: value })}
-                        ref={input => { this.inputs['usuario'] = input; }}
-                        keyboardType={'email-address'}
-                        maxLength={80} />
-                </View>
-                <View style={{
+                    <View style={{
 
-                    paddingLeft: 14,
-                    borderWidth: 3,
-                    borderColor: Variables.colors.gray,
-                    borderRadius: 20,
-                    flexDirection: 'row',
-                    alignContent: 'center',
-                    alignItems: 'center',
-                    marginBottom: 10
-                }}>
+                        paddingLeft: 14,
+                        borderWidth: 3,
+                        borderColor: Variables.colors.gray,
+                        borderRadius: 20,
+                        flexDirection: 'row',
+                        alignContent: 'center',
+                        alignItems: 'center',
+                        marginBottom: 10
+                    }}>
 
-                    <FontAwesome5 name={"key"} size={20} color={Variables.colors.black} />
-                    <TextInput
-                        style={[
+                        <FontAwesome5 name={"key"} size={20} color={Variables.colors.black} />
+                        <View style={{
+                            flexDirection: 'row',
+                            flex: 1
+                        }} >
+                            <TextInput
+                                style={[
 
-                            {
-                                paddingLeft: 14,
-                                opacity: 0.7,
-                                color: Variables.colors.black
-                            }
-                        ]}
-                        placeholderTextColor={Variables.colors.black}
+                                    {
+                                        paddingLeft: 14,
+                                        opacity: 0.7,
+                                        color: Variables.colors.black,
+                                        flex: 1,
+                                    }
+                                ]}
+                                placeholderTextColor={Variables.colors.black}
+                                returnKeyType="done"
+                                placeholder="Senha"
+                                autoCapitalize='none'
+                                value={this.state.senha}
+                                onChangeText={value => this.setState({ senha: value })}
+                                ref={input => { this.inputs['senha'] = input; }}
+                                maxLength={15}
+                                secureTextEntry={this.state.mSenha}
+                                keyboardType='default'
+                            />
 
-                        returnKeyType="next" blurOnSubmit={false}
-                        placeholder="Senha"
-                        autoCapitalize='none'
-                        value={this.state.senha}
-                        onSubmitEditing={() => { this.focusNextField('senha'); }} onChangeText={value => this.setState({ senha: value })}
-                        ref={input => { this.inputs['senha'] = input; }}
-                        maxLength={8}
-                        secureTextEntry={this.state.mSenha} />
-                          {this.state.senha.length > 0 &&
-                        <View>
-                            {this.state.mSenha &&
-                                <View style={{ width: 50, height: 50, bottom: 3, right: -170 , borderColor: '', borderWidth: 0, flex: 1 }}>
-                                    <TouchableOpacity onPress={this.mSenha}
-                                        style={{ position: 'absolute', alignItems: 'flex-end', bottom: 10, left: 10, right: 10 }}
-                                    >
-                                        <FontAwesome5
-                                            name={"eye-slash"} size={20} color={Variables.colors.black} />
-                                    </TouchableOpacity>
-                                </View>
-                            }
+                            {this.state.senha.length > 0 &&
+                                <View>
+                                    {this.state.mSenha &&
+                                        <View style={{ width: 50, height: 50, bottom: 1 }}  >
+                                            <TouchableOpacity onPress={this.mSenha}
+                                                style={{ position: 'absolute', alignItems: 'flex-end', bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                <FontAwesome5
+                                                    name={"eye-slash"} size={20} color={Variables.colors.black} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    }
 
-                            {!this.state.mSenha &&
-                                <View style={{ width: 50, height: 50, bottom: 3, right: -145 , borderColor: '', borderWidth: 0, flex: 1 }}>
-                                    <TouchableOpacity onPress={this.vSenha}
-                                        style={{ position: 'absolute', alignItems: 'flex-end', bottom: 10, left: 10, right: 10 }}
-                                    >
-                                        <FontAwesome5
-                                            name={"eye"} size={20} color={Variables.colors.black} />
-                                    </TouchableOpacity>
+                                    {!this.state.mSenha &&
+                                        <View style={{ width: 50, height: 50, bottom: 1, }}>
+                                            <TouchableOpacity onPress={this.vSenha}
+                                                style={{ position: 'absolute', alignItems: 'flex-end', bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                <FontAwesome5
+                                                    name={"eye"} size={20} color={Variables.colors.black} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    }
                                 </View>
                             }
                         </View>
+                    </View>
+
+
+                    <View style={{ alignItems: 'center' }}  >
+
+                        {this.state.loading &&
+                            <TouchableOpacity
+                                onPress={this.login}
+                                style={{ alignItems: 'center', marginTop: 50, marginBottom: 20, width: 80 }}    >
+                                <FontAwesome5 name="power-off" size={50} color={Variables.colors.black}></FontAwesome5>
+                                <Text style={{ fontSize: 12 }} >Conecte-se </Text>
+                            </TouchableOpacity>
+                        }
+                    </View>
+
+
+                    {!this.state.loading &&
+                        <ActivityIndicator size={"large"} color={Variables.colors.black} style={{ marginTop: 20, marginBottom: 20 }} />
                     }
-                </View>
-             
+                    
+                    <StatusBar
+                        animated={true}
+                        translucent={true}
+                        barStyle={'light-content'}
+                        backgroundColor={Variables.colors.grayDark}
+                    />
+                </ScrollView>
 
-                {this.state.loading &&
-                    // <Button title={"Conecte-se"} onClick={this.login} style={{ marginTop: 60 }} />
-                    <TouchableOpacity
-                        onPress={this.login}
-                        style={{ alignItems: 'center', marginTop: 50, marginBottom: 20, width: 80, left: botao }}    >
-                        <FontAwesome5 name="power-off" size={50} color={Variables.colors.black}></FontAwesome5>
-                        <Text style={{ fontSize: 12 }} >Conecte-se </Text>
-                    </TouchableOpacity>
-                }
-
-            
-                {!this.state.loading &&
-                    <ActivityIndicator size={"large"} color={Variables.colors.black} style={{ marginTop: 20, marginBottom: 20 }} />
-                }
-
-                {/*
-                <View style={{ marginTop: 50, marginBottom: 20, justifyContent: 'center', flexDirection: 'row' }}>
-                    <Text style={{ fontSize: 12, color: 'black' }}> Esqueceu sua senha ? </Text>
-                    <TouchableOpacity
-                        onPress={this.novaSenha}
-                        style={{ alignItems: 'center' }}
-                    >
-                        <Text style={{ fontSize: 12, color: 'black', textDecorationLine: 'underline', color: 'blue' }} >Recuperar senha </Text>
-                    </TouchableOpacity>
-                </View >
-
-
-                <View style={{ justifyContent: 'center', flexDirection: 'row' }}  >
-                    <Text style={{ fontSize: 12, color: 'black' }}>Não tem uma conta ? </Text>
-                    <TouchableOpacity
-                        onPress={this.novoUsuario}
-                        style={{ alignItems: 'center' }}
-                    >
-                        <Text style={{ fontSize: 12, color: 'black', textDecorationLine: 'underline', color: 'blue' }} >Inscrever-se</Text>
-                    </TouchableOpacity>
-                </View>
-
-                */}
-
-            </View>
+            </Screen>
 
         );
     }
