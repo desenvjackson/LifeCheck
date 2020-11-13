@@ -10,7 +10,6 @@ import BackgroundFetch from "react-native-background-fetch";
 import { BleManager, ScanMode } from 'react-native-ble-plx';
 import AsyncStorage from '@react-native-community/async-storage';
 import { Buffer } from 'buffer';
-//import Moment from 'react-moment';
 import 'moment-timezone';
 import moment from "moment";
 import api from './src/services/index.tsx';
@@ -19,10 +18,11 @@ AppRegistry.registerComponent(appName, () => App);
 
 const manager = new BleManager();
 
-this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedFim: 0 }
+this.state = { startMin: "", endMin: "", devicedados: "", tempMedFim: 0, allMedFim: 0, chega: 0 }
 this.state = { frequenciaCardiaca: "", oxigenio: "", hiperTensao: "", hipoTensao: "", temperatura: "" }
 
-/*
+
+/* 
 let ScanOptions = { scanMode: ScanMode.LowLatency }
 manager.startDeviceScan(null, ScanOptions, (error, device) => {
     if (error) {
@@ -33,7 +33,9 @@ manager.startDeviceScan(null, ScanOptions, (error, device) => {
     if (device.name != null) {
         const logTeste = { device_id: device.id, description: "MyHeadlessTask - startDeviceScan" }
         var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste));
-        compareID(device)
+        // compareID(device)
+         MyHeadlessTaskNS("event")
+        // setIntervalManual()
     }
 });
 */
@@ -44,16 +46,19 @@ AppState.addEventListener('change', state => {
         console.log("active");
     } else if (state === 'background') {
         console.log("background")
-        desconectar()
+               //MyHeadlessTaskNS("event")
+               desconectar()
     } else if (state === 'inactive') {
         console.log("inactive");
     }
 });
 
+
+
 // Configure it.
 BackgroundFetch.configure({
     enableHeadless: true,
-    minimumFetchInterval: 30,     // <-- minutes (15 is minimum allowed)
+    minimumFetchInterval: 20,     // <-- minutes (15 is minimum allowed)
     // Android options
     forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
     stopOnTerminate: false,
@@ -73,6 +78,7 @@ BackgroundFetch.configure({
     const BackgroundFetchFinish = { device_id: "[js] RNBackgroundFetch failed to start", description: error }
     var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(BackgroundFetchFinish))
 });
+
 
 // Optional: Query the authorization status.
 BackgroundFetch.status((status) => {
@@ -103,19 +109,24 @@ BackgroundFetch.status((status) => {
 
 
 
-const MyHeadlessTask = async (event) => {
+const MyHeadlessTaskNS = async (event) => {
     // Get task id from event {}:
-    let taskId = event.taskId;
-    console.log('[BackgroundFetch HeadlessTask] start: ', taskId);
-
-    let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
-    const logTeste2 = { device_id: asyncdeviceID, description: "Passo 01 - MyHeadlessTask" }
-    var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste2));
-
-    //Ligando o bluetooth
-    manager.enable();
 
     try {
+
+        let taskId = event.taskId;
+        console.log('[BackgroundFetch HeadlessTask] start: ', taskId);
+
+        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')        
+        const logTeste2 = { device_id: asyncdeviceID, description: "Passo 01 - MyHeadlessTaskNS" }
+        var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste2));
+
+        //Ligando o bluetooth
+        manager.enable()
+
+        // Desconectando
+        desconectar()
+
         let ScanOptions = { scanMode: ScanMode.LowLatency }
         manager.startDeviceScan(null, ScanOptions, (error, device) => {
             if (error) {
@@ -124,23 +135,27 @@ const MyHeadlessTask = async (event) => {
 
                 const logTeste3 = { device_id: device.id, description: error }
                 var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste3));
-                return
             }
 
             if (device.id === asyncdeviceID) {
-                const logTeste = { device_id: device.id, description: "Passo 02 - MyHeadlessTask - startDeviceScan" }
+
+                console.log("startDeviceScan - 01")
+
+                const logTeste = { device_id: device.id, description: "Passo 02 - MyHeadlessTaskNS - startDeviceScan" }
                 var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste))
 
                 //realiza conexão com o device cadastrado
                 compareID(device)
             }
 
+            console.log("startDeviceScan - 02")
+
         });
 
     } catch (err) {
         // some error handling
-        console.log("scanAndConnect" + err);
-        const logTeste4 = { device_id: "startDeviceScan : ", description: err }
+        console.log("MyHeadlessTaskNS " + err);
+        const logTeste4 = { device_id: "MyHeadlessTaskNS : ", description: err }
         var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste4));
     }
 
@@ -151,10 +166,13 @@ const MyHeadlessTask = async (event) => {
 }
 
 // Register your BackgroundFetch HeadlessTask
-BackgroundFetch.registerHeadlessTask(MyHeadlessTask);
+BackgroundFetch.registerHeadlessTask(MyHeadlessTaskNS);
+//BackgroundFetch.stop(MyHeadlessTask);
 
 
 const desconectar = async () => {
+
+    console.log("INICIO desconectar")
 
     let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
     const logTesteCID = { device_id: asyncdeviceID, description: "Passo 13 - Inicio DESCONECTAR" }
@@ -182,8 +200,7 @@ const compareID = async (device) => {
 
     let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
     // console.log("asyncdeviceID - Primeiro passo : " + asyncdeviceID)
-
-    await logs(device.id, "Passo 03 - ", "compareID")
+    await logs(device.id, "Passo 03 - compareID", "compareID")
 
     try {
         if (device.id === asyncdeviceID) {
@@ -192,7 +209,7 @@ const compareID = async (device) => {
 
             // Primeira tentativa de conexão 
             device = await manager.connectToDevice(device.id)
-            console.log("isConnected - else if : " + "Conectei....")
+            console.log("isConnected: " + "C O N E C T A D O !")
 
             // Verifica se o dipositivo tá conectado - Revalida
             let isConnected = await device.isConnected()
@@ -260,6 +277,12 @@ const checkmonitoringschedule = async (device) => {
             const lognovaMedicao = { device_id: device.id, description: "Passo 09 - novaMedicao" }
             var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(lognovaMedicao))
 
+            // Tratando o tempo de execucao da leitura da medição    
+            let startMin = moment(new Date()).format("HH:mm:ss")
+            this.state.startMin = startMin
+            const logstartMin = { device_id: device.id, description: "Passo 09.1 " + this.state.startMin }
+            var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logstartMin))
+
             //Realiza a medição temperatura
             await measureTempNow(device)
             const logmeasureTempNow = { device_id: device.id, description: "Passo 10 - measureTempNow" }
@@ -285,43 +308,57 @@ const checkmonitoringschedule = async (device) => {
     }
 }
 
+const timeVerification = async () => {
+    // Tratando o tempo de execucao da leitura da medição    
+    let startEnd = moment(new Date()).format("HH:mm:ss")
+    var ms = moment(startEnd, "HH:mm:ss").diff(moment(this.state.startMin, "HH:mm:ss"));
+    var d = moment.duration(ms);
+    var s = moment.utc(ms).format("ss");
+
+    const logTimeVerification = { device_id: this.state.devicedados.id, description: "timeVerification = INICIADO " +  s }
+    var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTimeVerification))
+
+    if (s > 45) {
+        this.state.chega = 1
+        await measureAllStop(this.state.devicedados)
+        await measureTempStop(this.state.devicedados)
+        // Enviando dados para Cloud
+        await sendDataCloud()
+    }
+
+}
+
+
 const setIntervalManual = async () => {
+
+    console.log('setIntervalManual = OK')
+    const logTesteCID = { device_id: this.state.devicedados.id, description: "setIntervalManual: INICIADO " }
+    var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTesteCID))
+
     try {
 
-        setTimeout(function () {
-            // Envia comando para encerrar o monitoramento da temperatura
-            measureTempStop(this.state.devicedados)
-            console.log('Executa uma vez após 5 segundos. measureTempStop ###')
-        }, 5000);
+        //Variavel de controle do while
+        this.state.chega = 0
 
-        setTimeout(function () {
-            // Envia comando para encerrar o monitoramento
-            measureAllStop(this.state.devicedados)
-            console.log('Executa uma vez após 50 segundos. measureAllStop ####')
-        }, 50000);
-
-        setTimeout(function () {
-            // Enviando dados para central 
-            sendDataCloud()
-        }, 55000);
-
-        setTimeout(function () {
-            //Enviando PUSH NOTIFICATION - Sobre o inicio da medição
-            sendNotificationMeasure(this.state.devicedados, 2)
-        }, 56000);
-
-        setTimeout(function () {
-            //Fechando conexão com o device
-            desconectar()
-        }, 60000);
-
+        while (true) {
+            let status = await timeVerification();
+            if (this.state.chega) {
+                break;
+            } else {
+                // Delay before running the next loop iteration:
+                // console.log(" ELSE do RELOGIO ")
+            }
+        }
 
     } catch (err) {
         console.log("setIntervalManual" + err)
+        const logTesteCID = { device_id: this.state.devicedados.id, description: "setIntervalManual = ERRO" }
+        var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTesteCID))
     }
 }
 
 const sendNotificationMeasure = async (device, codigomensagem) => {
+
     try {
         let nomePaciente = await AsyncStorage.getItem("nome");
         const logsendsOneSignal = { device_id: device.id, codigoMensagem: codigomensagem, nomePaciente: nomePaciente }
@@ -349,9 +386,6 @@ const vibratephone = async (device) => {
                 .catch(err => {
                     console.log(" valores > vibratephone :  " + err)
                 });
-            // Tratando o tempo de execucao da leitura da medição    
-            let startMin = moment(new Date()).format("HH:mm:ss")
-            this.state.startMin = startMin
         } else {
             console.log("Instant Check:", "Sem dispositivo conectado");
         }
@@ -379,9 +413,6 @@ const novaMedicao = async (device) => {
                 .catch(err => {
                     console.log(" valores > novaMedicao:  " + err)
                 });
-            // Tratando o tempo de execucao da leitura da medição    
-            let startMin = moment(new Date()).format("HH:mm:ss")
-            this.state.startMin = startMin
         } else {
             console.log("Instant Check:", "Sem dispositivo conectado");
         }
@@ -395,7 +426,7 @@ const novaMedicao = async (device) => {
 const measureAllStop = async (device) => {
 
     console.log("measureAllStop = INICIO")
-    // this.state.allMedFim = 1
+
     if (!device) {
         console.log("Dispositivo desconectado")
         return
@@ -416,7 +447,6 @@ const measureAllStop = async (device) => {
                     console.log(" valores > measureAllStop: " + err)
                     //this.setState({ info4: "Escrevendo..." + err })
                 });
-
         } catch (err) {
             console.log("measureAllStop : " + err)
         }
@@ -461,22 +491,6 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
 
     try {
 
-        /*
-        let startEnd = moment(new Date()).format("HH:mm")
-        var ms = moment(startEnd, "HH:mm").diff(moment(this.state.startMin, "HH:mm"));
-        var d = moment.duration(ms);
-        var s = moment.utc(ms).format("mm");
-
-        if (s > 1 && this.state.allMedFim === 0) {
-            const logTeste = { device_id: this.state.devicedados.id, description: "Passo 11 - measureAllStop" }
-            var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTeste));
-
-            // Finalizando medição
-            await measureAllStop(this.state.devicedados)
-            await measureTempStop(this.state.devicedados)
-        }
-        */
-
         if (error) {
             console.log(JSON.stringify(error))
         } else if (characteristics) {
@@ -508,7 +522,6 @@ const onUARTSubscriptionUpdate_ALL = async (error, characteristics) => {
         }
     } catch (err) {
         console.log("onUARTSubscriptionUpdate_ALL" + JSON.stringify(err))
-        // MyHeadlessTask(this.state.devicedados)
     }
 
 }
@@ -576,11 +589,11 @@ const sendDataCloud = async () => {
         let id_patient = await AsyncStorage.getItem('id_patient')
 
         const MonitoringHistoryModel = {
-            frequenciaCardiaca: this.state.frequenciaCardiaca,
-            oxigenio: this.state.oxigenio,
-            hiperTensao: this.state.hiperTensao,
-            hipoTensao: this.state.hipoTensao,
-            temperatura: this.state.temperatura,
+            frequenciaCardiaca: await this.state.frequenciaCardiaca,
+            oxigenio: await this.state.oxigenio,
+            hiperTensao: await this.state.hiperTensao,
+            hipoTensao: await this.state.hipoTensao,
+            temperatura: await this.state.temperatura,
             id_patient: id_patient,
             id_firm: 1,
             id_monitoringstatus: 1,
@@ -612,6 +625,12 @@ const sendDataCloud = async () => {
 
         const logsendData = { device_id: asyncdeviceID, description: "Passo 12 - " + " / " + this.state.frequenciaCardiaca + " / " + this.state.oxigenio + " / " + this.state.hiperTensao + " / " + this.state.hipoTensao + " / " + this.state.temperatura }
         var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logsendData))
+
+        // Saindo no Exit ....
+        // desconectar()
+
+        //Enviando PUSH NOTIFICATION - Sobre o inicio da medição
+        sendNotificationMeasure(this.state.devicedados, 2)
 
     } catch (err) {
         console.log(err)

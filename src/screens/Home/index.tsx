@@ -15,7 +15,7 @@ import {
     Image,
     SectionList, AppState
 } from 'react-native';
-import { Card, Title, Paragraph, TextInput, Switch } from 'react-native-paper';
+import { Card, Title, Paragraph, TextInput, Switch, Checkbox, RadioButton, ToggleButton  } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 const window = Dimensions.get('window');
 import LocationServicesDialogBox from "react-native-android-location-services-dialog-box";
@@ -301,7 +301,10 @@ export default class HomeScreen extends PureComponent<Props, State> {
                     device = await manager.connectToDevice(device.id)
                 }
                 this.setState({ deviceDados: device })
+                
+                //Salvando o id device no registro do usuário
                 await AsyncStorage.setItem('asyncdeviceID', device.id)
+                // recupera o id do paciente logado                
                 await this.oneSignal()
                 this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true, loading: false });
             } else {
