@@ -108,11 +108,13 @@ export default class HomeScreen extends PureComponent<Props, State> {
         const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
             {
-                title: 'Bluetooth Permission',
+                title: 'Permissão Bluetooth',
                 message:
-                    'In the next dialogue, Android will ask for permission for this ' +
-                    'App to access your location. This is needed for being able to ' +
-                    'use Bluetooth to scan your environment for peripherals.',
+                'No próximo diálogo, o Android pedirá permissão para este' +
+                ' APP para acessar sua localização.' +
+                '\n\n' +
+                'Isso é necessário para o bluetooth ser capaz de '+
+                'verificar se há periféricos em seu ambiente.',
                 buttonPositive: 'OK'
             },
         )
@@ -142,11 +144,11 @@ export default class HomeScreen extends PureComponent<Props, State> {
         }
         if (Platform.OS === 'android')
             LocationServicesDialogBox.checkLocationServicesIsEnabled({
-                message: "<h2>Use Location?</h2> \
-                                  This app wants to change your device settings:<br/><br/>\
-                                  Use GPS for location<br/><br/>",
-                ok: "YES",
-                cancel: "NO"
+                message: "<h2>Permissão Bluetooth</h2> \
+                                Isso é necessário para o bluetooth ser capaz de verificar se há periféricos em seu ambiente.<br/><br/>\
+                                Ativar o GPS.<br/><br/>",
+                ok: "SIM",
+                cancel: "Não"
             }).then(() => {
                 // locationTracking(dispatch, getState, geolocationSettings)
             })
