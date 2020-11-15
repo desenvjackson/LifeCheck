@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text, ScrollView, StatusBar } from 'react-native';
+import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text, ScrollView, StatusBar, Platform } from 'react-native';
 import { NavigationScreenProp } from 'react-navigation';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
@@ -11,6 +11,8 @@ import AsyncStorage from '@react-native-community/async-storage';
 
 import api from '../../services';
 import { UsuarioModel } from '../../models';
+
+import BackgroundFetch from "react-native-background-fetch";
 
 import Screen from '../Screen';
 const leftOculto = '210%';
@@ -95,16 +97,16 @@ export default class LoginScreen extends React.Component<Props, State> {
                 // Executa o método "login" na controller "usuario" na API
                 var { data: token } = await api.post("login/acesso", "dados=" + JSON.stringify(usuario));
 
-                console.log ( JSON.stringify(token["dados"][0]["nome"]) )
+                console.log(JSON.stringify(token["dados"][0]["nome"]))
 
                 //Passando o status da consulta, em caso de SUCESSO ou ERRO
                 if (token["status"] === 'sucesso') {
 
                     // Atribundo valor de retorno da consulta JSON para uma GLOBAL
-                     await AsyncStorage.setItem("email", JSON.stringify(token["dados"][0]["email"]));
-                     await AsyncStorage.setItem("nome", JSON.stringify(token["dados"][0]["nome"]));
-                     await AsyncStorage.setItem("id_firm", JSON.stringify(token["dados"][0]["id_firm"]));
-                     await AsyncStorage.setItem("id_patient", JSON.stringify(token["dados"][0]["id_patient"]));
+                    await AsyncStorage.setItem("email", JSON.stringify(token["dados"][0]["email"]));
+                    await AsyncStorage.setItem("nome", JSON.stringify(token["dados"][0]["nome"]));
+                    await AsyncStorage.setItem("id_firm", JSON.stringify(token["dados"][0]["id_firm"]));
+                    await AsyncStorage.setItem("id_patient", JSON.stringify(token["dados"][0]["id_patient"]));
 
                     this.props.navigation.navigate("Scan");
 
@@ -128,7 +130,7 @@ export default class LoginScreen extends React.Component<Props, State> {
                 mSenha: true
             })
         }
-        
+
     }
 
     novoUsuario = async () => {
@@ -147,7 +149,68 @@ export default class LoginScreen extends React.Component<Props, State> {
         this.setState({ mSenha: true })
     }
 
-    componentDidMount = async () =>{
+    componentDidMount = async () => {
+
+        // Configure it.
+        BackgroundFetch.configure({
+            enableHeadless: true,
+            minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
+            // Android options
+            forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
+            stopOnTerminate: false,
+            startOnBoot: true,
+            requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
+            requiresCharging: false,      // Default
+            requiresDeviceIdle: false,    // Default
+            requiresBatteryNotLow: false, // Default
+            requiresStorageNotLow: false  // Default
+        }, async (taskId) => {
+            console.log("[js] Received background-fetch event: ", taskId)
+            this.logRegisterServiceDevice("[js] Received background-fetch event")
+            // Finish, providing received taskId.
+            BackgroundFetch.finish(taskId);
+        }, (error) => {
+            console.log("[js] RNBackgroundFetch failed to start");
+            this.logRegisterServiceDevice("[js] RNBackgroundFetch failed to start")
+        });
+
+        // Optional: Query the authorization status.
+        BackgroundFetch.status((status) => {
+            switch (status) {
+                case BackgroundFetch.STATUS_RESTRICTED:
+                    console.log("BackgroundFetch restricted");
+                    const STATUS_RESTRICTED = { device_id: "BackgroundFetch.status", description: "STATUS_RESTRICTED" }
+                    api.post("monitoring/logTeste", "data=" + JSON.stringify(STATUS_RESTRICTED));
+                    break;
+                case BackgroundFetch.STATUS_DENIED:
+                    console.log("BackgroundFetch denied");
+                    const STATUS_DENIED = { device_id: "BackgroundFetch.status", description: "STATUS_DENIED" }
+                    api.post("monitoring/logTeste", "data=" + JSON.stringify(STATUS_DENIED));
+                    break;
+                case BackgroundFetch.STATUS_AVAILABLE:
+                    console.log("BackgroundFetch is enabled");
+                    const STATUS_AVAILABLE = { device_id: "BackgroundFetch.status", description: "STATUS_AVAILABLE" }
+                    api.post("monitoring/logTeste", "data=" + JSON.stringify(STATUS_AVAILABLE));
+                    break;
+            }
+        });
+
+
+        /*
+           BackgroundFetch.scheduleTask({
+               taskId: 'com.foo.customtask',
+               delay: 5000,       // milliseconds
+               forceAlarmManager: true,
+               periodic: true
+             });
+        */
+
+    }
+
+    logRegisterServiceDevice = async (descricao) => {
+        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
+        const logs = { device_id: asyncdeviceID, description: descricao }
+        var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logs))
     }
 
     render() {
@@ -158,7 +221,7 @@ export default class LoginScreen extends React.Component<Props, State> {
                     backgroundColor: Variables.colors.primary,
                     paddingLeft: 20,
                     paddingRight: 20,
-                    flex:1
+                    flex: 1
                 }}
             >
 
@@ -290,7 +353,7 @@ export default class LoginScreen extends React.Component<Props, State> {
                     {!this.state.loading &&
                         <ActivityIndicator size={"large"} color={Variables.colors.black} style={{ marginTop: 20, marginBottom: 20 }} />
                     }
-                    
+
                     <StatusBar
                         animated={true}
                         translucent={true}
