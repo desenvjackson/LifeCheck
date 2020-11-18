@@ -1,12 +1,12 @@
 import React from "react";
 import { Text, View, ViewStyle, KeyboardAvoidingView, ScrollView, Alert, Image, StatusBar, TouchableHighlight, TextInput, AsyncStorage } from 'react-native';
-import { NavigationScreenProp } from 'react-navigation';
+//import { NavigationScreenProp } from 'react-navigation';
 import AnimatedLoader from "react-native-animated-loader";
 import Styles, { Variables } from "../styles";
 //import api from "../services";
 
 interface Props {
-    navigation: NavigationScreenProp<any, any>;
+  //navigation: NavigationScreenProp<any, any>;
     usaLoading?: boolean;
     loading?: boolean;
     lightStatusBar: boolean;

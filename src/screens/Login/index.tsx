@@ -15,6 +15,7 @@ import { UsuarioModel } from '../../models';
 import BackgroundFetch from "react-native-background-fetch";
 
 import Screen from '../Screen';
+
 const leftOculto = '210%';
 const left = '130%';
 const botao = '38%';

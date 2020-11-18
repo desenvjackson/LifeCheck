@@ -99,16 +99,26 @@ export default class HomeScreen extends PureComponent {
         let id_patient = await AsyncStorage.getItem('id_patient')
         let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
 
-        //await manager.cancelDeviceConnection(asyncdeviceID);
-        // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
-        const MonitoringPatient = { id_patient: id_patient }
-        var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));
-
         manager.stopDeviceScan()
 
         //Ligando o bluetooth
         manager.enable()
 
+        await manager.destroy()
+        manager = new BleManager()
+
+        let subscription = await manager.onStateChange((state) => {
+            console.log("state : #" + state)
+            if (state === 'PoweredOn') {
+                subscription.remove();
+            }
+        }, true);
+
+        //await manager.cancelDeviceConnection(asyncdeviceID);
+        // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
+        const MonitoringPatient = { id_patient: id_patient }
+        var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));  
+        
         //Passando o status da consulta, em caso de SUCESSO ou ERRO
         if (returnData["status"] === 'sucesso' && returnData["dados"] === 1) {
             try {
@@ -157,8 +167,8 @@ export default class HomeScreen extends PureComponent {
             color: '#000080',
             linkingURI: 'exampleScheme://chat/jane',
             parameters: {
-                delay: 300000,
-                //delay:  60000,
+                delay: 1200000,
+                // delay:  60000,
             },
         }
 
@@ -375,16 +385,27 @@ export default class HomeScreen extends PureComponent {
 
     scanAndConnect = async () => {
 
-        // Parando o processo em segundo plano
-        await this.stopBackGround()
-
-        await this.setState({
-            loading: true, scanning: true, dadosservicesMAP: new Map(), erro: false, dadosservices: [],
-            dados: [], peripherals: new Map(),
-            conectando: "Conectando ao seu INSTANT CHECK... ", corIconBluetooth: 'navy',
-            modal: true
-        });
         try {
+            // Parando o processo em segundo plano
+            await this.stopBackGround()
+
+            await manager.destroy()
+            manager = new BleManager()
+
+            let subscription = await manager.onStateChange((state) => {
+                console.log("state : #" + state)
+                if (state === 'PoweredOn') {
+                    subscription.remove();
+                }
+            }, true);
+
+            await this.setState({
+                loading: true, scanning: true, dadosservicesMAP: new Map(), erro: false, dadosservices: [],
+                dados: [], peripherals: new Map(),
+                conectando: "Conectando ao seu INSTANT CHECK... ", corIconBluetooth: 'navy',
+                modal: true
+            });
+
             var peripherals = this.state.peripherals;
             let ScanOptions = { scanMode: ScanMode.LowLatency }
             manager.startDeviceScan(null, ScanOptions, (error, device) => {
@@ -428,18 +449,22 @@ export default class HomeScreen extends PureComponent {
     deviceconnect = async (device, comando) => {
 
         await this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy', loading: true, dados: [], modal: false })
-        console.log("Connecting to device :")
-
+        // Limpando campos da última consulta.
+        await this.setState({ frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '' })
         if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
+
+        console.log("Connecting to device #### ")
 
         try {
             //if (!isConnected) {
+            console.log("Connecting to device :")
             device = await manager.connectToDevice(device.id, { autoConnect: true })
+            console.log("connectToDevice >>> ")
             this.setState({ deviceDados: device })
 
-            console.log("connectToDevice")
+
             //Salvando o id device no registro do usuário
-            
+
             await AsyncStorage.setItem('asyncdeviceID', device.id)
             // recupera o id do paciente logado                
             await this.oneSignal()
@@ -450,25 +475,24 @@ export default class HomeScreen extends PureComponent {
             let deviceID = await AsyncStorage.getItem("asyncdeviceID")
             this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
 
+
+            // Active listenning notify 
+            await this.setupNotifications(device)
+            console.log("setupNotifications")
+
+            // vibra após conectar
+            await this.vibratephone(device)
+            console.log("vibratephone")
+
+            //Iniciar medição
+            await this.novaMedicao(device, comando)
+            console.log("novaMedicao")
+
+
         } catch (err) {
             // some error handling
             console.log("deviceconnect" + err);
-            this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray', loading: false });
         }
-
-        // Active listenning notify 
-        await this.setupNotifications(device)
-        console.log("setupNotifications")
-
-        // vibra após conectar
-        await this.vibratephone(device)
-        console.log("vibratephone")
-
-        //Iniciar medição
-        await this.novaMedicao(device, comando)
-        console.log("novaMedicao")
-
-
     }
 
     vibratephone = async (device) => {
@@ -499,7 +523,7 @@ export default class HomeScreen extends PureComponent {
 
 
     measureTempNow = async (device) => {
-        const services = await device.services();
+        //const services = await device.services();
         this.setState({ medeTemperatura: true })
 
         if (!device) {
@@ -537,7 +561,7 @@ export default class HomeScreen extends PureComponent {
     }
 
     measureTempStop = async (device) => {
-        const services = await device.services();
+        //const services = await device.services();
         if (!device) {
             // this.setState({ info4: "Dispositivo desconectado" })
             return
@@ -718,7 +742,7 @@ export default class HomeScreen extends PureComponent {
         // if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
 
         if (device) {
-            const services = await device.services()
+            //const services = await device.services()
             await this.measureTempNow(device)
 
             let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
@@ -752,7 +776,7 @@ export default class HomeScreen extends PureComponent {
     }
 
     measureAllStop = async (device) => {
-        const services = await device.services();
+        //const services = await device.services();
         if (!device) {
             console.log("Dispositivo desconectado")
             //this.setState({ info4: "Dispositivo desconectado" })
@@ -991,18 +1015,17 @@ export default class HomeScreen extends PureComponent {
                         style={styles.modal}
                     >
 
-                        <TouchableOpacity style={{ alignItems: 'flex-end', paddingRight: 10, paddingTop: 10 }} onPress={this.fechaModal}>
-                            <FontAwesome5 name='times' color='red' size={15} ></FontAwesome5>
-                        </TouchableOpacity>
 
-                        <Card>
-                            <Card.Content>
-                                <Title> Lista de Dispositivos</Title>
-                                <Paragraph>Conecte-se ao seu Instant Check {"\n"}</Paragraph>
-                                <Text style={styles.titleTextTituloID} > Último ID conectado: {this.state.deviceID}   </Text>
-                            </Card.Content>
-                        </Card>
 
+                        <Text style={styles.sectionHeader}>
+                            <FontAwesome5 name="bluetooth" size={22} color='navy'></FontAwesome5> Lista de Dispositivos:
+                       </Text>
+
+                        <View style={{ paddingLeft: 30, paddingTop: 15 , backgroundColor: '#DCDCDC' }}>
+                            <Text >
+                                Último ID conectado: {this.state.deviceID} {"\n"}
+                            </Text>
+                        </View>
 
                         <ScrollView>
                             {this.state.dados.map((item, index) => {
@@ -1015,7 +1038,7 @@ export default class HomeScreen extends PureComponent {
                                             title={item.name ? 'INSTANT CHECK - T1S' : 'INSTANT CHECK - T1S'}
                                             //subtitle={item.connected ? 'Desconectar' : 'Conectar'} {item.id}
                                             subtitle={item.id}
-                                            left={() => <FontAwesome5 name={"bluetooth"} size={25} color={this.state.corIconBluetooth} />}
+                                        //left={() => <FontAwesome5 name={"bluetooth"} size={25} color={this.state.corIconBluetooth} />}
                                         //right={() => <FontAwesome5 name={"bluetooth"} size={25} color={this.state.corIconBluetooth} /> }
                                         />
                                     </TouchableOpacity>
@@ -1024,9 +1047,15 @@ export default class HomeScreen extends PureComponent {
                         </ScrollView>
                         {this.state.loading &&
                             <>
-                                <Text><ActivityIndicator size={"small"} color="red" style={{ marginTop: 10 }} /> Pesquisando... </Text>
+                                <Text style={{ alignItems: 'center', alignContent: "center", margin: 10, paddingTop: 10, paddingLeft: 40, fontSize: 18 }}>
+                                    <ActivityIndicator size={"large"} color="red" style={{ marginTop: 10 }} />  {" "} Pesquisando... Aguarde ! </Text>
                             </>
                         }
+
+                        <TouchableOpacity style={{ alignItems: "flex-end", alignContent: "flex-end", margin: 10, paddingTop: 10, paddingLeft: 40 }}
+                            onPress={this.fechaModal} >
+                            <FontAwesome5 name='sign-out-alt' color='navy' size={17} > Sair </FontAwesome5>
+                        </TouchableOpacity>
 
                     </Modal>
                 </View>
@@ -1330,7 +1359,10 @@ export default class HomeScreen extends PureComponent {
 
                                 <View style={{ padding: 5 }}>
                                     {this.state.loadingMedicao &&
-                                        <ActivityIndicator size={"large"} color="red" style={{ marginTop: 10, justifyContent: "center" }} />
+                                        <>
+                                            <Text style={{ alignItems: 'center', alignContent: "center", margin: 10, paddingTop: 10, paddingLeft: 40, fontSize: 18 }}>
+                                                <ActivityIndicator size={"large"} color="red" style={{ marginTop: 10, justifyContent: "center" }} />   {" "} Aguarde... </Text>
+                                        </>
                                     }
                                 </View>
 
@@ -1528,7 +1560,7 @@ const styles = StyleSheet.create({
         padding: 30,
         //margin: 10,
         borderColor: 'black',
-        borderBottomWidth: 1
+        //borderBottomWidth: 1
     },
     tinyLogo: {
         width: 80,
