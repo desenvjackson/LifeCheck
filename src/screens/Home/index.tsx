@@ -271,7 +271,7 @@ export default class HomeScreen extends PureComponent {
 
         AppState.addEventListener('change', state => {
             if (state === 'active') {
-                // Alert.alert("INSTANT CHECK", "Enquanto seu APP estiver aberto, o modo de medição em segundo plano fica desativado.")
+                Alert.alert("INSTANT CHECK", "Enquanto seu APP estiver aberto, o modo de medição em segundo plano fica desativado.")
                 this.stopBackGround()
                 console.log("active");
             } else if (state === 'background') {
@@ -375,6 +375,9 @@ export default class HomeScreen extends PureComponent {
 
     scanAndConnect = async () => {
 
+        // Parando o processo em segundo plano
+        await this.stopBackGround()
+
         await this.setState({
             loading: true, scanning: true, dadosservicesMAP: new Map(), erro: false, dadosservices: [],
             dados: [], peripherals: new Map(),
@@ -436,9 +439,17 @@ export default class HomeScreen extends PureComponent {
 
             console.log("connectToDevice")
             //Salvando o id device no registro do usuário
+            
             await AsyncStorage.setItem('asyncdeviceID', device.id)
             // recupera o id do paciente logado                
             await this.oneSignal()
+
+            // Pegando nome do usuário logado e o último device conectado
+            let nomeUsuario = await AsyncStorage.getItem("nome")
+            nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ", "")
+            let deviceID = await AsyncStorage.getItem("asyncdeviceID")
+            this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
+
         } catch (err) {
             // some error handling
             console.log("deviceconnect" + err);
@@ -449,15 +460,15 @@ export default class HomeScreen extends PureComponent {
         await this.setupNotifications(device)
         console.log("setupNotifications")
 
-         // vibra após conectar
-         await this.vibratephone(device)
-         console.log("vibratephone")
+        // vibra após conectar
+        await this.vibratephone(device)
+        console.log("vibratephone")
 
         //Iniciar medição
         await this.novaMedicao(device, comando)
         console.log("novaMedicao")
 
-       
+
     }
 
     vibratephone = async (device) => {
