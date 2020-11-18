@@ -149,69 +149,10 @@ export default class LoginScreen extends React.Component<Props, State> {
         this.setState({ mSenha: true })
     }
 
-    componentDidMount = async () => {
-
-        // Configure it.
-        BackgroundFetch.configure({
-            enableHeadless: true,
-            minimumFetchInterval: 15,     // <-- minutes (15 is minimum allowed)
-            // Android options
-            forceAlarmManager: false,     // <-- Set true to bypass JobScheduler.
-            stopOnTerminate: false,
-            startOnBoot: true,
-            requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
-            requiresCharging: false,      // Default
-            requiresDeviceIdle: false,    // Default
-            requiresBatteryNotLow: false, // Default
-            requiresStorageNotLow: false  // Default
-        }, async (taskId) => {
-            console.log("[js] Received background-fetch event: ", taskId)
-            this.logRegisterServiceDevice("[js] Received background-fetch event")
-            // Finish, providing received taskId.
-            BackgroundFetch.finish(taskId);
-        }, (error) => {
-            console.log("[js] RNBackgroundFetch failed to start");
-            this.logRegisterServiceDevice("[js] RNBackgroundFetch failed to start")
-        });
-
-        // Optional: Query the authorization status.
-        BackgroundFetch.status((status) => {
-            switch (status) {
-                case BackgroundFetch.STATUS_RESTRICTED:
-                    console.log("BackgroundFetch restricted");
-                    const STATUS_RESTRICTED = { device_id: "BackgroundFetch.status", description: "STATUS_RESTRICTED" }
-                    api.post("monitoring/logTeste", "data=" + JSON.stringify(STATUS_RESTRICTED));
-                    break;
-                case BackgroundFetch.STATUS_DENIED:
-                    console.log("BackgroundFetch denied");
-                    const STATUS_DENIED = { device_id: "BackgroundFetch.status", description: "STATUS_DENIED" }
-                    api.post("monitoring/logTeste", "data=" + JSON.stringify(STATUS_DENIED));
-                    break;
-                case BackgroundFetch.STATUS_AVAILABLE:
-                    console.log("BackgroundFetch is enabled");
-                    const STATUS_AVAILABLE = { device_id: "BackgroundFetch.status", description: "STATUS_AVAILABLE" }
-                    api.post("monitoring/logTeste", "data=" + JSON.stringify(STATUS_AVAILABLE));
-                    break;
-            }
-        });
-
-
-        /*
-           BackgroundFetch.scheduleTask({
-               taskId: 'com.foo.customtask',
-               delay: 5000,       // milliseconds
-               forceAlarmManager: true,
-               periodic: true
-             });
-        */
+    componentDidMount = async () => {        
 
     }
 
-    logRegisterServiceDevice = async (descricao) => {
-        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
-        const logs = { device_id: asyncdeviceID, description: descricao }
-        var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logs))
-    }
 
     render() {
         return (

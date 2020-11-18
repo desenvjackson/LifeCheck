@@ -15,7 +15,7 @@ import {
     Image,
     SectionList, AppState
 } from 'react-native';
-import { Card, Title, Paragraph, TextInput, Switch, Checkbox, RadioButton, ToggleButton  } from 'react-native-paper';
+import { Card, Title, Paragraph, TextInput, Switch, Checkbox, RadioButton, ToggleButton } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 const window = Dimensions.get('window');
 import LocationServicesDialogBox from "react-native-android-location-services-dialog-box";
@@ -31,41 +31,33 @@ import Modal from 'react-native-modal';
 import { Buffer } from 'buffer';
 import api from '../../services/index'
 import OneSignal from 'react-native-onesignal';
+import AndroidWhitelist from 'react-native-android-whitelist';
+import BackgroundJob from 'react-native-background-actions';
+
 
 interface Props {
     navigation: NavigationScreenProp<any, any>;
 }
 
-interface State {
-    marker: Array<any>,
-    dados: Array<any>,
-    dadosservices: Array<any>,
-    dadosservicesMAP: any,
-    peripherals: any,
-    loading: boolean,
-    scanning: boolean,
-    erro: boolean,
-    conectando: any,
-    corIconBluetooth: any,
-    modal: boolean,
-    deviceDados: any,
-    info: any,
-    connected: boolean;
-    modalPerfil: boolean,
-    modalSaude: boolean,
-    email: any, nome: any, idade: any, peso: any, altura: any,
-    outros: any,
-    switchValueCardiaco: boolean, switchValuePressao: boolean, switchValueDiabete: boolean,
-    switchValue1: boolean,
-    interval: boolean, modalMedicao: boolean, loadingMedicao: boolean,
-    frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any, temperatura: any, medeTemperatura: boolean,
-    nomeUsuario: any
-}
-
-const manager = new BleManager();
 
 
-export default class HomeScreen extends PureComponent<Props, State> {
+let manager = new BleManager();
+//manager.destroy();
+//manager = new BleManager();
+
+const sleep = time => new Promise(resolve => setTimeout(() => resolve(), time));
+
+const subscription = manager.onStateChange((state) => {
+    console.log("state : #" + state)
+    if (state === 'PoweredOn') {
+        //this.scanAndConnect();
+        subscription.remove();
+    }
+}, true);
+
+
+
+export default class HomeScreen extends PureComponent {
 
     private inputs = []
 
@@ -73,36 +65,156 @@ export default class HomeScreen extends PureComponent<Props, State> {
         return {
         }
     }
+    state = {
+        marker: [],
+        dados: [],
+        dadosservices: [],
+        peripherals: new Map(),
+        dadosservicesMAP: new Map(),
+        loading: false,
+        scanning: false,
+        erro: false,
+        conectando: '',
+        corIconBluetooth: 'red',
+        modal: false,
+        deviceDados: '',
+        info: '',
+        connected: false,
+        modalPerfil: false,
+        modalSaude: false,
+        email: '', nome: '', idade: '', peso: '', altura: '',
+        outros: '',
+        switchValueCardiaco: false, switchValuePressao: false, switchValueDiabete: false,
+        switchValue1: true,
+        interval: false, modalMedicao: false, loadingMedicao: false,
+        frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false,
+        nomeUsuario: '',
+        deviceID: '',
+    };
 
-    constructor(props: Props) {
-        super(props);
-        this.state = {
-            marker: [],
-            dados: [],
-            dadosservices: [],
-            peripherals: new Map(),
-            dadosservicesMAP: new Map(),
-            loading: false,
-            scanning: false,
-            erro: false,
-            conectando: '',
-            corIconBluetooth: 'red',
-            modal: false,
-            deviceDados: '',
-            info: '',
-            connected: false,
-            modalPerfil: false,
-            modalSaude: false,
-            email: '', nome: '', idade: '', peso: '', altura: '',
-            outros: '',
-            switchValueCardiaco: false, switchValuePressao: false, switchValueDiabete: false,
-            switchValue1: true,
-            interval: false, modalMedicao: false, loadingMedicao: false,
-            frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false,
-            nomeUsuario: ''
-        };
+
+    connectBackgroundMeasurement = async () => {
+
+        console.log(" connectBackgroundMeasurement ")
+        let id_patient = await AsyncStorage.getItem('id_patient')
+        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
+
+        //await manager.cancelDeviceConnection(asyncdeviceID);
+        // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
+        const MonitoringPatient = { id_patient: id_patient }
+        var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));
+
+        manager.stopDeviceScan()
+
+        //Ligando o bluetooth
+        manager.enable()
+
+        //Passando o status da consulta, em caso de SUCESSO ou ERRO
+        if (returnData["status"] === 'sucesso' && returnData["dados"] === 1) {
+            try {
+                if (asyncdeviceID) {
+                    let ScanOptions = { scanMode: ScanMode.LowLatency }
+                    manager.startDeviceScan(null, ScanOptions, (error, device) => {
+                        if (error) {
+                            // Handle error (scanning will be stopped automatically)
+                            console.log("Error - startDeviceScan : " + error);
+                            return
+                        }
+                        if (device.id === asyncdeviceID) {
+                            // Parando scaneamento dos devices
+                            manager.stopDeviceScan()
+                            this.deviceconnect(device, true)
+                        }
+                        console.log("loopando")
+                    });
+                } else {
+                    console.log("CONECTADO !!!! O MENINO ")
+                }
+            } catch (err) {
+                console.log("compareID" + err);
+                const logTesteCID = { device_id: asyncdeviceID, description: err }
+                var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTesteCID))
+            }
+        } else {
+            //desconecta device T1S
+            console.log("Não é hora de fazer a medição, bye!")
+            const logcheckmonitoringscheduleELSE = { device_id: asyncdeviceID, description: "Não é hora de fazer a medição, bye!" }
+            var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logcheckmonitoringscheduleELSE))
+        }
     }
 
+
+    processBackgroundMeasurement = async () => {
+
+        let options = {
+            taskName: 'Example',
+            taskTitle: 'Medição em segundo plano',
+            taskDesc: '',
+            taskIcon: {
+                name: 'ic_launcher',
+                type: 'mipmap',
+            },
+            color: '#000080',
+            linkingURI: 'exampleScheme://chat/jane',
+            parameters: {
+                delay: 300000,
+                //delay:  60000,
+            },
+        }
+
+        let playing = BackgroundJob.isRunning();
+
+        playing = !playing;
+        if (playing) {
+            try {
+                console.log('Trying to start background service');
+                await BackgroundJob.start(this.taskRandom, options);
+                console.log('Successful start!');
+            } catch (e) {
+                console.log('Error', e);
+            }
+        } else {
+            console.log('Stop background service');
+            await BackgroundJob.stop();
+        }
+
+    }
+
+    taskRandom = async taskData => {
+        if (Platform.OS === 'ios') {
+            console.warn(
+                'This task will not keep your app alive in the background by itself, use other library like react-native-track-player that use audio,',
+                'geolocalization, etc. to keep your app alive in the background while you excute the JS from this library.',
+            );
+        }
+        await new Promise(async resolve => {
+            // For loop with a delay
+            const { delay } = taskData;
+            for (let i = 0; BackgroundJob.isRunning(); i++) {
+                console.log('Runned -> ', i);
+                //await BackgroundJob.updateNotification({ taskDesc: 'Instant Check Ativo no momento.' + i });
+                await BackgroundJob.updateNotification({ taskDesc: 'Instant Check está ativo no momento' });
+                await sleep(delay);
+                await this.connectBackgroundMeasurement();
+            }
+        });
+    };
+
+    stopBackGround = async () => {
+        console.log("stopBackGround")
+        await BackgroundJob.stop();
+    }
+
+    getWhiteListPermission = async () => {
+        const config = {
+            title: 'INSTANT CHECK',
+            text: 'Para garantir a entrega oportuna de notificações push e a medição em segundo plano, coloque nosso aplicativo na lista de permissões.',
+            //doNotShowAgainText: 'Não mostrar de novo',
+            positiveText: 'Incluir',
+            //negativeText: 'Não'
+        }
+        AndroidWhitelist.alert(config)
+    }
 
     getBluetoothScanPermission = async () => {
         const granted = await PermissionsAndroid.request(
@@ -110,11 +222,11 @@ export default class HomeScreen extends PureComponent<Props, State> {
             {
                 title: 'Permissão Bluetooth',
                 message:
-                'No próximo diálogo, o Android pedirá permissão para este' +
-                ' APP para acessar sua localização.' +
-                '\n\n' +
-                'Isso é necessário para o bluetooth ser capaz de '+
-                'verificar se há periféricos em seu ambiente.',
+                    'No próximo diálogo, o Android pedirá permissão para este' +
+                    ' APP para acessar sua localização.' +
+                    '\n\n' +
+                    'Isso é necessário para o bluetooth ser capaz de ' +
+                    'verificar se há periféricos em seu ambiente.',
                 buttonPositive: 'OK'
             },
         )
@@ -154,13 +266,34 @@ export default class HomeScreen extends PureComponent<Props, State> {
             })
     }
 
+
     componentDidMount = async () => {
+
+        AppState.addEventListener('change', state => {
+            if (state === 'active') {
+                // Alert.alert("INSTANT CHECK", "Enquanto seu APP estiver aberto, o modo de medição em segundo plano fica desativado.")
+                this.stopBackGround()
+                console.log("active");
+            } else if (state === 'background') {
+                console.log("background")
+                this.processBackgroundMeasurement()
+            } else if (state === 'inactive') {
+                console.log("inactive");
+            }
+        });
+
+
+        //Inicia processo em background - medicao
+        // await this.processBackgroundMeasurement()
 
         //Ligando o bluetooth
         manager.enable();
 
         // Função ONESIGNAL 
-        this.oneSignal();
+        await this.oneSignal();
+
+        //Permissão para liberar a medição em segundo plano, sem monitoração do uso de bateria.
+        //await this.getWhiteListPermission()
 
         console.log("check getBluetoothScanPermission access permission...")
         await this.getBluetoothScanPermission()
@@ -168,10 +301,12 @@ export default class HomeScreen extends PureComponent<Props, State> {
         console.log("check requestLocationPermission access permission...")
         await this.requestLocationPermission()
 
-        // Pegando nome do usuário logado
+        // Pegando nome do usuário logado e o último device conectado
         let nomeUsuario = await AsyncStorage.getItem("nome")
         nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ", "")
-        this.setState({ nomeUsuario: nomeUsuario })
+        let deviceID = await AsyncStorage.getItem("asyncdeviceID")
+        this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
+
     }
 
 
@@ -246,7 +381,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
             conectando: "Conectando ao seu INSTANT CHECK... ", corIconBluetooth: 'navy',
             modal: true
         });
-
         try {
             var peripherals = this.state.peripherals;
             let ScanOptions = { scanMode: ScanMode.LowLatency }
@@ -260,19 +394,25 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 if (!device.name) {
                     device.name = 'SEM NOME';
                 }
-
                 // Quando encontrar o dispositivo encerra o processo de scan.    
-                if (device.name === 'T1S') {
-                    manager.stopDeviceScan();
+                //if (device.name === 'T1S') {
+                // manager.stopDeviceScan()
 
-                    peripherals.set(device.id, device);
-                    this.setState({ peripherals });
-                    this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
-                    let lista = this.state.dadosservices.filter((index) => index.name != 'SEM NOME');
-                    this.setState({ dados: lista });
-                }
+                peripherals.set(device.id, device)
+                this.setState({ peripherals })
+                this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
+                //let lista = this.state.dadosservices.filter((index) => index.name != 'SEM NOME')
+                let lista = this.state.dadosservices.filter((index) => index.name === 'T1S')
+                this.setState({ dados: lista });
+                //}
 
                 console.log(device.name)
+                //this.desconectar(device)
+
+                setTimeout(() => {
+                    manager.stopDeviceScan()
+                    this.setState({ loading: false })
+                }, 2500)
 
 
             });
@@ -282,54 +422,69 @@ export default class HomeScreen extends PureComponent<Props, State> {
     }
 
 
-    deviceconnect = async (device) => {
+    deviceconnect = async (device, comando) => {
 
-        //setTimeout(() => {
         await this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy', loading: true, dados: [], modal: false })
-        //}, 0);
-
         console.log("Connecting to device :")
 
-        // Verifica se o dipositivo tá conectado
-        let isConnected = await device.isConnected()
-        manager.stopDeviceScan()
+        if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
 
         try {
-            if (!isConnected) {
-                device = await manager.connectToDevice(device.id)
-                // Verifica se o dipositivo tá conectado - Revalida
-                let isConnected = await device.isConnected()
-                if (!isConnected) {
-                    device = await manager.connectToDevice(device.id)
-                }
-                this.setState({ deviceDados: device })
-                
-                //Salvando o id device no registro do usuário
-                await AsyncStorage.setItem('asyncdeviceID', device.id)
-                // recupera o id do paciente logado                
-                await this.oneSignal()
-                this.setState({ conectando: "Conectado! Bem vindo.", corIconBluetooth: 'green', connected: true, loading: false });
-            } else {
-                this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray', loading: false });
-            }
+            //if (!isConnected) {
+            device = await manager.connectToDevice(device.id, { autoConnect: true })
+            this.setState({ deviceDados: device })
+
+            console.log("connectToDevice")
+            //Salvando o id device no registro do usuário
+            await AsyncStorage.setItem('asyncdeviceID', device.id)
+            // recupera o id do paciente logado                
+            await this.oneSignal()
         } catch (err) {
             // some error handling
             console.log("deviceconnect" + err);
             this.setState({ conectando: "Desconectado", corIconBluetooth: 'gray', loading: false });
         }
 
-        device = await device.discoverAllServicesAndCharacteristics();
-        const services = await device.services();
-
-        device.onDisconnected((error, disconnectedDevice) => {
-            console.log('Disconnected ', disconnectedDevice.name)
-            console.log('Disconnected ', error)
-        });
-
         // Active listenning notify 
-        await this.setupNotifications(device);
+        await this.setupNotifications(device)
+        console.log("setupNotifications")
+
+         // vibra após conectar
+         await this.vibratephone(device)
+         console.log("vibratephone")
+
+        //Iniciar medição
+        await this.novaMedicao(device, comando)
+        console.log("novaMedicao")
+
+       
     }
 
+    vibratephone = async (device) => {
+        try {
+            if (device) {
+                let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+                let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
+
+                let comandoAll = "qwAD/3GA" // -- 
+                await manager.writeCharacteristicWithResponseForDevice(device.id,
+                    UART_SERVICE, RX_CHARACT,
+                    comandoAll
+                )
+                    .then(characteristic => {
+                        //this.setState({ info4: characteristic.value })
+                    })
+                    .catch(err => {
+                        console.log(" valores > vibratephone :  " + err)
+                    });
+            } else {
+                console.log("Instant Check:", "Sem dispositivo conectado");
+            }
+        } catch (err) {
+            // some error handling
+            console.log("vibratephone" + err);
+        }
+    }
 
 
     measureTempNow = async (device) => {
@@ -405,7 +560,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
         // assuming the 'device' is already connected
         try {
             await device.discoverAllServicesAndCharacteristics();
-            const services = await device.services();
 
             // Ativando notificação de ECG+PPG HR        
             let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
@@ -433,7 +587,6 @@ export default class HomeScreen extends PureComponent<Props, State> {
             } else if (characteristics) {
 
                 let hex = Buffer.from(characteristics.value, 'base64');
-
                 let hex2 = hex[2]
                 let hex6 = hex[6]
                 let hex7 = hex[7]
@@ -441,22 +594,18 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 let hex9 = hex[9]
 
                 if (hex2 === 10) {
-                    this.setState({
+                    await this.setState({
                         frequenciaCardiaca: hex6, oxigenio: hex7, hiperTensao: hex8, hipoTensao: hex9,
                     })
 
                     // Enviando dados para dashboard
                     await this.sendDataCloud(hex6, hex7, hex8, hex9)
 
-                } else if (hex2 === 5) {
-                    this.setState({ temperatura: hex[6] + '.' + hex[7] })
+                } else if (hex2 === 5 && hex[6] > 0 && hex[4] === 134) {
+                    await this.setState({ temperatura: hex[6] + '.' + hex[7] })
                 }
-
-
-
                 // Vai para página de medições    
                 // this.props.navigation.navigate("Medições");
-
             }
         } catch (err) {
             console.log(JSON.stringify(err))
@@ -470,7 +619,9 @@ export default class HomeScreen extends PureComponent<Props, State> {
             console.log("Desconectando ... ");
             this.setState({ conectando: "Desconectado.", corIconBluetooth: 'gray', connected: false });
             //await AsyncStorage.setItem('asyncdeviceID', '')
-            Alert.alert("Instant Check:", "Desconectado!");
+            //Alert.alert("Instant Check:", "Desconectado!");
+            //manager.destroy()
+            //manager = new BleManager()
         } else {
             this.setState({ conectando: "Sem dispositivo conectado.", corIconBluetooth: 'gray' });
             Alert.alert("Instant Check:", "Sem dispositivo conectado");
@@ -496,7 +647,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
         }
 
         if (msg.item === "MULTIMEDIÇÃO") {
-            this.novaMedicao(this.state.deviceDados)
+            await this.scanAndConnect()
         }
 
         console.log(msg.item);
@@ -549,14 +700,14 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
     }
 
-    novaMedicao = async (device) => {
+    novaMedicao = async (device, comando) => {
 
         // Limpando campos da última consulta.
         await this.setState({ frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '' })
+        // if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
 
         if (device) {
-            const services = await device.services();
-            await this.setState({ loadingMedicao: true, modalMedicao: true })
+            const services = await device.services()
             await this.measureTempNow(device)
 
             let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
@@ -582,7 +733,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 }
             }, 40000);
 
-            return () => clearTimeout(timeout);
+            return () => clearTimeout(timeout)
 
         } else {
             Alert.alert("Instant Check:", "Sem dispositivo conectado");
@@ -616,6 +767,8 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 console.log(err)
             }
             this.setState({ loadingMedicao: false })
+            await this.desconectar(device)
+            //await this.processBackgroundMeasurement()
         }
     }
 
@@ -671,24 +824,27 @@ export default class HomeScreen extends PureComponent<Props, State> {
                 <View
                     style={{
                         paddingTop: 10,
-                        backgroundColor: "white"
+                        backgroundColor: "white",
+                        flex: 1
                     }}
 
                 >
 
                     <View style={styles.cardBorderPersonal}>
                         <View style={{ height: 0 }}>
-                            <FontAwesome5 name="portrait" size={70} color='navy'> </FontAwesome5>
+                            <FontAwesome5 name="portrait" size={90} color='navy'> </FontAwesome5>
                             {/* <Image
                                 style={styles.tinyLogo}
                                 source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/alas.png' }}
                             /> */}
                         </View>
                         <View style={{ paddingLeft: 100, paddingTop: 3 }}  >
-                            <Text style={styles.titleText} > {this.state.nomeUsuario}   </Text>
+                            <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
+                            <Text style={styles.titleTextTituloID} > Último ID conectado: {"\n"} {this.state.deviceID}   </Text>
                             <TouchableOpacity onPress={() => this.scanAndConnect()} >
                                 <View style={{ flexDirection: "row", paddingTop: 17 }}>
 
+                                    {/*
                                     {this.state.connected ?
                                         <FontAwesome5 name="bluetooth" size={23} color='green'> Conectado ! </FontAwesome5> :
                                         <FontAwesome5 name="bluetooth" size={23} color={this.state.corIconBluetooth}> </FontAwesome5>
@@ -706,13 +862,74 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                         </Text>
                                     }
 
+                                */}
+
                                 </View>
                             </TouchableOpacity>
                         </View>
                     </View>
 
+                    <ScrollView style={{ flex: 1, paddingTop: 45 }}>
+
+                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
+
+                            <TouchableOpacity onPress={() => this.scanAndConnect()}>
+                                <View style={styles.cardBorderMenu}>
+                                    <View >
+                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text>
+                                        <Text style={styles.textTextDescricao} >  MULTIMEDIÇÃO  </Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
 
 
+                            <TouchableOpacity >
+                                <View style={styles.cardBorderMenu}>
+                                    <View >
+                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"history"} size={50} color="navy" /> </Text>
+                                        <Text style={styles.textTextDescricao} >  HISTÓRICO  </Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+
+                        </View>
+
+
+                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
+
+                            <TouchableOpacity >
+                                <View style={styles.cardBorderMenu}>
+                                    <View >
+                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text>
+                                        <Text style={styles.textTextDescricao} >  LOGIN AUTOMÁTICO  </Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+
+
+                            <TouchableOpacity >
+                                <View style={styles.cardBorderMenu}>
+                                    <View >
+                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"user-cog"} size={50} color="navy" /> </Text>
+                                        <Text style={styles.textTextDescricao} >  OPÇÔES  </Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+
+                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
+                            <TouchableOpacity >
+                                <View >
+                                    <Text style={styles.titleTextBodyMenu} >  </Text>
+                                    <Text style={styles.textTextDescricao} >   </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+
+                    </ScrollView>
+                    {/*
                     <SectionList
                         sections={[
                             // { title: 'MEUS DADOS:', data: ['Perfil', 'Saúde e bem-estar'] },
@@ -720,20 +937,21 @@ export default class HomeScreen extends PureComponent<Props, State> {
                         ]}
                         renderItem={({ item }) =>
                             <TouchableOpacity onPress={() => this.abreModal({ item })} >
-                                <Text style={styles.item}><FontAwesome5 name="cog" size={15} color='navy'></FontAwesome5> {item}</Text>
+                                <Text style={styles.item}>{item}</Text>
                             </TouchableOpacity>
                         }
                         renderSectionHeader={({ section }) =>
-                            <Text style={styles.sectionHeader}>{section.title}</Text>
+                            <Text style={styles.sectionHeader}><FontAwesome5 name="file-medical-alt" size={22} color='navy'></FontAwesome5> {section.title}</Text>
                         }
                         keyExtractor={(item, index) => index}
                     />
 
 
-                    <Text style={styles.sectionHeader}>GERENCIAR</Text>
+                    <Text style={styles.sectionHeader}> <FontAwesome5 name="user-cog" size={22} color='navy'></FontAwesome5> GERENCIAR:</Text>
 
-                    <View style={{ flexDirection: "row", paddingLeft: 16, margin: 12 }}>
-                        <FontAwesome5 name="sync" size={15} color="black"></FontAwesome5>
+
+                    <View style={{ flexDirection: "row", paddingLeft: 35, margin: 12 }}>
+
                         <Text style={{ paddingLeft: 9, fontSize: 15 }}>{this.state.switchValue1 ? 'Login automático - Ativado' : 'Login automático - Desativado'}</Text>
                         <Switch
                             style={{ paddingLeft: 50 }}
@@ -743,24 +961,22 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                     <TouchableOpacity
                         onPress={() => this.desconectar(this.state.deviceDados)} >
-                        <View style={{ flexDirection: "row", paddingLeft: 16, margin: 12 }}>
+                        <View style={{ flexDirection: "row", paddingLeft: 35, margin: 12 }}>
 
-                            <FontAwesome5 name="sign-out-alt" size={20} color="red"></FontAwesome5>
+
                             <Text style={{ paddingLeft: 9, fontSize: 15 }}>Desconectar dispositivo </Text>
                         </View>
                     </TouchableOpacity>
-
-
-
-
+ */}
                 </View>
 
-                <View>
+
+
+                <View style={{ position: "absolute" }}>
                     <Modal
                         isVisible={this.state.modal}
-                        animationIn={"slideInLeft"}
+                        //animationIn={"slideInLeft"}
                         onBackButtonPress={() => this.setState({ modal: false })}
-
                         style={styles.modal}
                     >
 
@@ -770,8 +986,9 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                         <Card>
                             <Card.Content>
-                                <Title>Dispositivos</Title>
-                                <Paragraph>Conecte-se ao seu Instant Check</Paragraph>
+                                <Title> Lista de Dispositivos</Title>
+                                <Paragraph>Conecte-se ao seu Instant Check {"\n"}</Paragraph>
+                                <Text style={styles.titleTextTituloID} > Último ID conectado: {this.state.deviceID}   </Text>
                             </Card.Content>
                         </Card>
 
@@ -781,13 +998,14 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                 return (
                                     <TouchableOpacity
                                         key={item.name}
-                                        onPress={() => this.deviceconnect(item)}
+                                        onPress={() => this.deviceconnect(item, false)}
                                     >
                                         <Card.Title
                                             title={item.name ? 'INSTANT CHECK - T1S' : 'INSTANT CHECK - T1S'}
-                                            subtitle={item.connected ? 'Desconectar' : 'Conectar'}
+                                            //subtitle={item.connected ? 'Desconectar' : 'Conectar'} {item.id}
+                                            subtitle={item.id}
                                             left={() => <FontAwesome5 name={"bluetooth"} size={25} color={this.state.corIconBluetooth} />}
-                                        //right={() => <FontAwesome5 name={"bluetooth"} size={40} color={this.state.corIconBluetooth} /> }
+                                        //right={() => <FontAwesome5 name={"bluetooth"} size={25} color={this.state.corIconBluetooth} /> }
                                         />
                                     </TouchableOpacity>
                                 );
@@ -1042,7 +1260,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                                 <View style={{ flexDirection: "row", justifyContent: "center" }}>
 
-                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                    <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
                                                 {/*  <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"heartbeat"} size={30} color="navy" /> </Text> */}
@@ -1054,7 +1272,7 @@ export default class HomeScreen extends PureComponent<Props, State> {
                                         </View>
                                     </TouchableOpacity>
 
-                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                    <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
                                                 {/* <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"stethoscope"} size={30} color="navy" /> </Text> */}
@@ -1070,28 +1288,28 @@ export default class HomeScreen extends PureComponent<Props, State> {
 
                                 <View style={{ flexDirection: "row", justifyContent: "center" }}>
 
-                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                    <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
                                                 {/* <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"tint"} size={30} color="navy" /> </Text> */}
                                                 <Text style={styles.textTextDescricao} > Saturação do oxigênio </Text>
                                                 <Text style={styles.titleTextTitulo}>( SpO2 % )</Text>
                                                 <Text style={styles.textText} >{this.state.oxigenio}</Text>
-                                                <Text style={styles.textTextDescricao} >{this.state.oxigenio > 90 ? "Normal" : "Atenção"}   </Text>
+                                                <Text style={styles.textTextDescricao} >{this.state.oxigenio > '90' ? "Normal" : "Atenção"}   </Text>
 
                                             </View>
                                         </View>
                                     </TouchableOpacity>
 
 
-                                    <TouchableOpacity onPress={this.carregaTelemetria}>
+                                    <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
 
                                                 <Text style={styles.textTextDescricao} > Temperatura  </Text>
                                                 <Text style={styles.titleTextTitulo}>( °C ) </Text>
                                                 <Text style={styles.textText} >{this.state.temperatura}</Text>
-                                                <Text style={styles.textTextDescricao} >{this.state.temperatura > 38 ? "Atenção" : "Normal"}   </Text>
+                                                <Text style={styles.textTextDescricao} >{this.state.temperatura > '38' ? "Atenção" : "Normal"}   </Text>
 
                                             </View>
                                         </View>
@@ -1193,8 +1411,9 @@ const styles = StyleSheet.create({
         //fontWeight: "bold",
     },
     titleText: {
-        fontSize: 18,
-        fontWeight: "bold"
+        fontSize: 24,
+        fontWeight: "bold",
+        paddingBottom: 10,
     },
     titleTextTitulo: {
         fontSize: 12,
@@ -1205,6 +1424,20 @@ const styles = StyleSheet.create({
         textAlign: "center",
         textAlignVertical: "center",
         // marginTop: 10,
+    },
+    titleTextTituloID: {
+        fontSize: 14,
+        //fontWeight: "bold",
+        // marginTop: 10,
+    },
+    titleTextBodyMenu: {
+        fontSize: 14,
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+        paddingTop: 9
     },
     cardBorder: {
         backgroundColor: "white",
@@ -1241,17 +1474,50 @@ const styles = StyleSheet.create({
         textAlign: "center",
         textAlignVertical: "center",
     },
+    cardBorderMenu: {
+        backgroundColor: "white",
+        flex: 1,
+        //padding: 10,
+        //margin: 50, 
+        marginRight: 10,
+        marginBottom: 10,
+        marginTop: 20,
+        marginLeft: 10,
+
+        width: 115,
+        height: 120,
+
+        borderColor: "navy",
+        borderWidth: 1,
+
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        borderBottomLeftRadius: 10,
+        borderBottomRightRadius: 10,
+
+        shadowColor: 'black',
+        shadowOffset: { width: 50, height: 50 },
+        shadowOpacity: 3,
+        shadowRadius: 50,
+        //elevation: 17,
+
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+    },
     cardBorderPersonal: {
-        borderTopRightRadius: 30,
-        borderTopLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        borderBottomLeftRadius: 30,
+        //borderTopRightRadius: 30,
+        //borderTopLeftRadius: 30,
+        //borderBottomRightRadius: 30,
+        //borderBottomLeftRadius: 30,
         backgroundColor: 'white',
         //flex: 1,
         padding: 30,
-        margin: 10,
+        //margin: 10,
         borderColor: 'black',
-        borderWidth: 0,
+        borderBottomWidth: 1
     },
     tinyLogo: {
         width: 80,
@@ -1269,17 +1535,18 @@ const styles = StyleSheet.create({
     sectionHeader: {
         //padding: 30,
         //margin: 10,
-        paddingTop: 3,
-        paddingLeft: 30,
+        paddingTop: 9,
+        paddingLeft: 20,
         //paddingRight: 10,
-        paddingBottom: 3,
+        paddingBottom: 9,
         fontSize: 16,
         fontWeight: 'bold',
         backgroundColor: 'rgba(247,247,247,1.0)',
         textDecorationColor: 'gray',
+        color: 'navy'
     },
     item: {
-        paddingLeft: 30,
+        paddingLeft: 55,
         paddingBottom: 10,
         paddingTop: 10,
         fontSize: 16,
@@ -1287,8 +1554,9 @@ const styles = StyleSheet.create({
     },
     modal: {
         backgroundColor: 'white',
-        margin: 30, // This is the important style you need to set
-        marginBottom: 250,
+        //margin: 30, // This is the important style you need to set
+        marginBottom: 220,
+        //marginTop: 5,
         //alignItems: undefined,
         //justifyContent: undefined,
     },
