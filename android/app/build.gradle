@@ -136,6 +136,8 @@ android {
         versionName "0.0.12"
         // Enabling multidex support.
         multiDexEnabled true
+        missingDimensionStrategy 'react-native-camera', 'general'
+
     }
     splits {
         abi {

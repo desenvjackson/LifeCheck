@@ -5,6 +5,7 @@ import api from '../services/index'
 import Styles, { Variables } from "../../styles";
 import Modal from 'react-native-modal';
 
+import AsyncStorage from '@react-native-community/async-storage';
 
 
 
@@ -22,23 +23,31 @@ export default class telemetria extends PureComponent {
     nome: "",
     sobrenome: "",
     data: "",
-    cor: ""
+    cor: "",
+    avatar: ""
   };
   componentDidMount = async () => {
+    let avatar = await AsyncStorage.getItem("avatar")
+    if (avatar != null) {
+      this.setState({
+        avatar: avatar
+      })
+    }
 
     this.meusRegistros()
-    //setInterval(this.listMonitoringForFirm, 1000)
   }
 
 
   meusRegistros = async () => {
+    let id = await AsyncStorage.getItem('id_patient')
+
     this.setState({
       carregarDataSoucer: true
     })
     try {
 
       const data = {
-        id_firm: 1
+        id_patient: id,
       }
 
       var { data: token } = await api.post("monitoring/listMonitoringForFirm", "data=" + JSON.stringify(data))
@@ -163,10 +172,20 @@ export default class telemetria extends PureComponent {
             <View >
               <View style={styles.textlogoMedicao}>
                 <View style={{ paddingBottom: 20, paddingRight: 15, paddingLeft: 15 }}>
-                  <Image style={{
-                    width: 70, height: 70, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
-                  }} source={require('../../assets/user.png')}></Image>
-
+                  {this.state.avatar ?
+                    <Image
+                      source={{ uri: this.state.avatar }}
+                      style={{
+                        width: 70, height: 70, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                      }}
+                    />
+                    :
+                    <Image
+                      source={require('../../assets/user.png')}
+                      style={{
+                        width: 70, height: 70, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                      }} />
+                  }
                 </View>
                 <View style={{ paddingBottom: 37 }}>
                   <Text style={{ fontSize: 20, color: "black" }} >

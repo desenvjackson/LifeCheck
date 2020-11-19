@@ -60,8 +60,8 @@ export default class LoginScreen extends React.Component<Props, State> {
         // Cria o state do componente
         this.state = {
             loading: true,
-            usuario: "",
-            senha: "",
+            usuario: "matheus@renovy.com.br",
+            senha: "123456",
             error: '',
             login: "",
             mSenha: true,
@@ -71,12 +71,12 @@ export default class LoginScreen extends React.Component<Props, State> {
     focusNextField = (id: string) => {
         this.inputs[id].focus();
     };
-    componentDidMount = async () => {      
+    componentDidMount = async () => {
         var loginAuto = await AsyncStorage.getItem("loginAuto")
 
         if (loginAuto == 'true') {
             this.loginautomatico()
-        }  
+        }
     }
     loginautomatico = async () => {
 
@@ -119,14 +119,17 @@ export default class LoginScreen extends React.Component<Props, State> {
 
                 //Passando o status da consulta, em caso de SUCESSO ou ERRO
                 if (token["status"] === 'sucesso') {
-
+                    console.log(token)
                     // Atribundo valor de retorno da consulta JSON para uma GLOBAL
                     await AsyncStorage.setItem("email", JSON.stringify(token["dados"][0]["email"]));
                     await AsyncStorage.setItem("nome", JSON.stringify(token["dados"][0]["nome"]));
                     await AsyncStorage.setItem("id_firm", JSON.stringify(token["dados"][0]["id_firm"]));
                     await AsyncStorage.setItem("id_patient", JSON.stringify(token["dados"][0]["id_patient"]));
-                    await AsyncStorage.setItem("login",this.state.usuario);
-                    await AsyncStorage.setItem("senha",this.state.senha);
+                    await AsyncStorage.setItem("login", this.state.usuario);
+                    await AsyncStorage.setItem("senha", this.state.senha);
+                    if (token["dados"][0]["avatar"] != null) {
+                        await AsyncStorage.setItem("avatar", token["dados"][0]["avatar"])
+                    }
                     this.props.navigation.navigate("Scan");
 
                 } else {
@@ -145,7 +148,6 @@ export default class LoginScreen extends React.Component<Props, State> {
             //resetando os campos caso o usuario volte para tela login.
             this.setState({
                 senha: '',
-                usuario: '',
                 mSenha: true
             })
         }

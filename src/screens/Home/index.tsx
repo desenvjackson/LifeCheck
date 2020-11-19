@@ -33,6 +33,8 @@ import api from '../../services/index'
 import OneSignal from 'react-native-onesignal';
 import AndroidWhitelist from 'react-native-android-whitelist';
 import BackgroundJob from 'react-native-background-actions';
+import Styles, { Variables } from "../../styles";
+import { RNCamera } from 'react-native-camera';
 
 
 interface Props {
@@ -58,6 +60,7 @@ const subscription = manager.onStateChange((state) => {
 
 
 export default class HomeScreen extends PureComponent {
+    camera = React.createRef<RNCamera>();
 
     private inputs = []
 
@@ -91,7 +94,16 @@ export default class HomeScreen extends PureComponent {
         nomeUsuario: '',
         deviceID: '',
         stateLogin: true,
-        login: ''
+        login: '',
+        foto: null,
+        avatar: '',
+        modalFoto: false,
+        mudaCamera: true,
+        alteraCamera: '',
+        telaCamera: false,
+        textoCamera: '',
+        salvandoFoto: false,
+        indicatorFoto: false
     };
     ativarLoginAuto = async () => {
         await this.setState({
@@ -295,7 +307,18 @@ export default class HomeScreen extends PureComponent {
                 // locationTracking(dispatch, getState, geolocationSettings)
             })
     }
+    permissionsFotos = async () => {
+        var granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA,
+            {
+                title: 'Permissão para usar a câmera',
+                message: 'O aplicativo precisa de permissão para utilizar a câmera',
+                buttonPositive: 'Ok',
+                buttonNegative: 'Cancelar'
+            });
 
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED)
+            alert('Permissão para acessar a câmera negada!');
+    }
 
     componentDidMount = async () => {
         //LoginAutomatico 
@@ -343,15 +366,22 @@ export default class HomeScreen extends PureComponent {
         console.log("check requestLocationPermission access permission...")
         await this.requestLocationPermission()
 
-        // Pegando nome do usuário logado e o último device conectado
+        await this.permissionsFotos()
+
+        // Pegando nome do usuário logado e o último device conectador
         let nomeUsuario = await AsyncStorage.getItem("nome")
         nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ", "")
         let deviceID = await AsyncStorage.getItem("asyncdeviceID")
         this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
-
+        //carregando foto
+        let avatar = await AsyncStorage.getItem("avatar")
+        if (avatar != null) {
+            this.setState({
+                avatar: avatar
+            })
+        }
+        console.log('avatar' + this.state.avatar)
     }
-
-
 
 
     // oneSignal
@@ -695,10 +725,6 @@ export default class HomeScreen extends PureComponent {
         }
     }
 
-
-
-
-
     abreModal = async (msg: any) => {
 
         if (msg.item === "Perfil") {
@@ -871,8 +897,126 @@ export default class HomeScreen extends PureComponent {
             console.log(err)
         }
     }
+    //foto
+
+    POST = async () => {
+        let id = await AsyncStorage.getItem('id_patient')
+        try {
+            const data = {
+                id_patient: id,
+                avatar: this.state.avatar
+            }
+            var { data: token } = await api.post("login/atualizaPerfil", "data=" + JSON.stringify(data));
+            //Passando o status da consulta, em caso de SUCESSO ou ERRO
+            console.log(data)
+
+            if (token["status"] === 'sucesso') {
+                console.log(token)
+
+                Alert.alert('Atualizado com Sucesso', '')
+                this.resetar()
+                await AsyncStorage.setItem("avatar", this.state.avatar)
+                this.setState({
+                    textoCamera: '',
+                    salvandoFoto: false,
+                    modalFoto: false,
+                })
+            } else {
+                Alert.alert('Erro ao atualizar a foto', 'porfavor tente novamente.')
+
+            }
+        } catch (err) {
+            console.warn(err);
+        }
+
+    }
 
 
+    uploadS3 = async () => {
+        var linkfoto = this.state.foto.base64
+        try {
+            await fetch('https://rnyapi.com.br/api/aws_ic/upload.php/',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                    },
+
+                    body: "linkfoto=" + linkfoto,
+
+                }).then((response) => response.json())
+                .then((responseJson) => {
+                    console.log(retorno)
+                    // Atribundo valor de retorno da consulta JSON para uma GLOBAL
+                    var retorno = responseJson["retorno"].toString()
+                    console.log("retorno :  " + retorno)
+                    this.setState({
+                        avatar: retorno,
+                    })
+                    this.POST();
+                });
+        } catch (err) {
+            console.warn(err);
+            alert(err)
+        }
+    }
+
+    mudarFoto = async () => {
+        await this.setState({
+            telaCamera: false,
+            foto: null,
+            modalFoto: true,
+            alteraCamera: RNCamera.Constants.Type.back,
+        })
+    }
+
+    fechaFotoTela = async () => {
+
+        await this.setState({
+            salvandoFoto: true,
+            textoCamera: 'Salvando foto ... ',
+
+        })
+        await this.uploadS3()
+    }
+
+    resetar = async () => {
+        await this.setState({
+            telaCamera: false,
+            foto: null
+        });
+    }
+
+    takePicture = async () => {
+        this.setState({
+            textoCamera: 'Tirando foto ... ',
+            indicatorFoto: true
+        })
+        if (this.camera) {
+            const options = { quality: 0.5, base64: true, width: 700, height: 700, fixOrientation: true };
+            const data = await this.camera.current.takePictureAsync(options);
+            console.log(data)
+            await this.setState({
+                foto: data,
+                telaCamera: true,
+                indicatorFoto: false
+            });
+        }
+    }
+
+    alteraCameraFront = async () => {
+        this.setState({
+            alteraCamera: RNCamera.Constants.Type.front,
+            mudaCamera: false,
+
+        })
+    }
+    alteraCameraback = async () => {
+        this.setState({
+            alteraCamera: RNCamera.Constants.Type.back,
+            mudaCamera: true,
+        })
+    }
 
     render() {
         const btnScanTitle = 'Conectar Dispositivo (' + (this.state.scanning ? 'on' : 'off') + ')';
@@ -896,20 +1040,36 @@ export default class HomeScreen extends PureComponent {
                     }}
 
                 >
-
                     <View style={styles.cardBorderPersonal}>
-                        <View style={{ height: 0 }}>
-                            <FontAwesome5 name="portrait" size={90} color='navy'> </FontAwesome5>
-                            {/* <Image
-                                style={styles.tinyLogo}
-                                source={{ uri: 'https://app-bueiro-limpo.s3-us-west-2.amazonaws.com/alas.png' }}
-                            /> */}
+                        <View style={styles.avatarView}>
+                            <TouchableOpacity onPress={() => this.mudarFoto()} style={{ paddingRight: 15, paddingLeft: 15 }}>
+                                {this.state.avatar ?
+                                    <Image
+                                        source={{ uri: this.state.avatar }}
+                                        style={{
+                                            width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                        }}
+                                    />
+                                    :
+                                    <Image
+                                        source={require('../../assets/user.png')}
+                                        style={{
+                                            width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                        }} />
+                                }
+                            </TouchableOpacity>
+                            <View>
+                                <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
+                                <Text style={styles.titleTextTituloID} > Último ID conectado: {"\n"} {this.state.deviceID}   </Text>
+                            </View>
+
                         </View>
-                        <View style={{ paddingLeft: 100, paddingTop: 3 }}  >
-                            <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
-                            <Text style={styles.titleTextTituloID} > Último ID conectado: {"\n"} {this.state.deviceID}   </Text>
+                        {/*
+                        <View style={{ paddingLeft: 120, paddingTop: 3 }}  >
+
                             <TouchableOpacity onPress={() => this.scanAndConnect()} >
-                                <View style={{ flexDirection: "row", paddingTop: 17 }}>
+
+                                <View style={{ flexDirection: "row", paddingTop: 0 }}>
 
                                     {/*
                                     {this.state.connected ?
@@ -928,15 +1088,13 @@ export default class HomeScreen extends PureComponent {
                                             {this.state.connected ? '' : 'Desconectado'}
                                         </Text>
                                     }
-
-                                */}
-
                                 </View>
                             </TouchableOpacity>
                         </View>
+                    */}
                     </View>
 
-                    <ScrollView style={{ flex: 1, paddingTop: 45 }}>
+                    <ScrollView style={{ flex: 1, paddingTop: 20 }}>
 
                         <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
 
@@ -950,7 +1108,7 @@ export default class HomeScreen extends PureComponent {
                             </TouchableOpacity>
 
 
-                            <TouchableOpacity onPress={()=>  this.props.navigation.navigate("Historico") }>
+                            <TouchableOpacity onPress={() => this.props.navigation.navigate("Historico")}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"history"} size={50} color="navy" /> </Text>
@@ -1405,7 +1563,7 @@ export default class HomeScreen extends PureComponent {
 
                         <ScrollView>
 
-                            <View style={styles.viewPrincipal}>
+                            <View>
 
                                 <Image
                                     source={require('../../assets/logo.png')}
@@ -1497,10 +1655,183 @@ export default class HomeScreen extends PureComponent {
 
 
                     </Modal>
+                    <Modal
+                        isVisible={this.state.modalFoto}
+                        animationIn={"slideInLeft"}
+                        onBackButtonPress={() => this.setState({ modalFoto: false, })}
+                    >
+
+                        {!this.state.telaCamera &&
+                            <View style={{ width: '100%', height: '100%' }}>
+
+                                <RNCamera
+                                    ref={this.camera}
+                                    style={StyleSheet.absoluteFillObject}
+                                    type={this.state.alteraCamera}>
+                                </RNCamera>
+
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignContent: 'center',
+                                    alignItems: 'center',
+                                    position: 'absolute', bottom: 1, opacity: 0.8
+                                }}>
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        flex: 1
+                                    }} >
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            flex: 1,
+                                            justifyContent: 'space-between'
+                                        }}>
+                                            {this.state.indicatorFoto &&
+                                                <View style={{
+                                                    borderWidth: 3,
+                                                    borderColor: Variables.colors.gray,
+                                                    borderRadius: 20,
+                                                    margin: 10,
+                                                    padding: 3,
+                                                    paddingBottom: 10,
+                                                    flex: 1,
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    marginTop: 10,
+                                                    backgroundColor: Variables.colors.gray,
+                                                    justifyContent: 'center',
+                                                }}>
+                                                    <Text style={{ color: Variables.colors.white, fontSize: 20, paddingRight: 5 }}>
+                                                        {this.state.textoCamera}
+                                                    </Text>
+                                                    <ActivityIndicator size="large" color={Variables.colors.white} />
+                                                </View>
+
+                                            }
+                                            {!this.state.indicatorFoto &&
+                                                <>
+                                                    <View style={{ paddingLeft: 20 }} >
+                                                        <TouchableOpacity onPress={this.takePicture}
+                                                        >
+
+                                                            <FontAwesome5
+                                                                name={"camera"} size={50} color={Variables.colors.white} />
+                                                        </TouchableOpacity>
+
+                                                    </View>
+                                                    {this.state.mudaCamera &&
+                                                        <View style={{ paddingRight: 20 }}>
+                                                            <TouchableOpacity onPress={this.alteraCameraFront}
+                                                            >
+                                                                <Image
+                                                                    source={require('../../assets/camera.png')}
+                                                                    style={{
+                                                                        width: 50, height: 50, tintColor: 'white'
+                                                                    }} />
+
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    }
+                                                    {!this.state.mudaCamera &&
+                                                        <View style={{ paddingRight: 20 }}>
+                                                            <TouchableOpacity onPress={this.alteraCameraback}
+                                                            >
+                                                                <Image
+                                                                    source={require('../../assets/camera.png')}
+                                                                    style={{
+                                                                        width: 50, height: 50, tintColor: 'white'
+                                                                    }} />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    }
+                                                </>
+                                            }
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        }
+                        {this.state.telaCamera &&
+                            <View style={StyleSheet.absoluteFillObject}>
+                                <Image
+                                    source={{ uri: this.state.foto.uri }}
+                                    resizeMode="stretch"
+                                    style={{ width: '100%', height: '100%' }}
+                                />
+                                <>
+
+                                    {
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            alignContent: 'center',
+                                            alignItems: 'center',
+                                            position: 'absolute', bottom: 1, opacity: 0.8
+                                        }}>
+                                            <View style={{
+                                                flexDirection: 'row',
+                                                flex: 1
+                                            }} >
+                                                <View style={{
+                                                    flexDirection: 'row',
+                                                    flex: 1,
+                                                    justifyContent: 'space-between'
+                                                }}>
+                                                    {this.state.salvandoFoto &&
+                                                        <View style={{
+                                                            borderWidth: 3,
+                                                            borderColor: Variables.colors.gray,
+                                                            borderRadius: 20,
+                                                            margin: 10,
+                                                            padding: 3,
+                                                            paddingBottom: 10,
+                                                            flex: 1,
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            marginTop: 10,
+                                                            backgroundColor: Variables.colors.gray,
+                                                            justifyContent: 'center',
+                                                        }}>
+                                                            <Text style={{ color: Variables.colors.white, fontSize: 20, paddingRight: 5 }}>
+                                                                {this.state.textoCamera}
+                                                            </Text>
+                                                            <ActivityIndicator size="large" color={Variables.colors.white} />
+                                                        </View>
+
+                                                    }
+                                                    {!this.state.salvandoFoto &&
+                                                        <>
+                                                            <View>
+                                                                <TouchableOpacity
+                                                                    onPress={this.resetar}
+                                                                    style={{ alignItems: 'flex-start', marginLeft: 25 }}
+                                                                >
+                                                                    <FontAwesome5 name="redo" size={50} color={Variables.colors.white}></FontAwesome5>
+                                                                    <Text style={{ fontSize: 12, color: 'white', paddingLeft: 7 }} >Repetir </Text>
+                                                                </TouchableOpacity>
+                                                            </View>
+
+                                                            <View>
+                                                                <TouchableOpacity
+                                                                    onPress={this.fechaFotoTela}
+                                                                    style={{ alignItems: 'flex-end', marginRight: 25 }}
+                                                                >
+                                                                    <FontAwesome5 name="arrow-circle-right" size={50} color={Variables.colors.white}></FontAwesome5>
+                                                                    <Text style={{ fontSize: 12, color: 'white' }} >Continuar</Text>
+
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </>
+                                                    }
+
+                                                </View>
+                                            </View>
+                                        </View>
+                                    }
+                                </>
+
+                            </View>
+                        }
+                    </Modal>
                 </View>
-
-
-
             </>
         );
     }
@@ -1535,8 +1866,8 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         fontWeight: "bold",
     },
-    viewPrincipal: {
-        //marginTop: window.height/7.9 ,
+    avatarView: {
+        flexDirection: 'row'
     },
     scroll: {
         flex: 1,
@@ -1586,6 +1917,7 @@ const styles = StyleSheet.create({
     },
     titleTextTituloID: {
         fontSize: 14,
+        color: 'gray'
         //fontWeight: "bold",
         // marginTop: 10,
     },
@@ -1673,6 +2005,7 @@ const styles = StyleSheet.create({
         //borderBottomLeftRadius: 30,
         backgroundColor: 'white',
         //flex: 1,
+        paddingTop:40,
         padding: 30,
         //margin: 10,
         borderColor: 'black',
