@@ -6,6 +6,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import cadastrodRoutes from './rotas/Principal';
 import LoginScreen from './screens/Login/index';
 import novoUsuarioScreen from './screens/Login/novousuario';
+import historico from'./screens/operacoes/telemetria';
+
 
 const Stack = createStackNavigator();
 
@@ -31,6 +33,16 @@ function App() {
 
         <Stack.Screen name="Cadastro de Usuário" component={novoUsuarioScreen} options={{
           title: 'Cadastro de Usuário',
+          headerShown: true,
+          headerTintColor: '#000',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontFamily: "tahoma",
+            fontSize: 15,
+          },
+        }} />
+        <Stack.Screen name="Historico" component={historico} options={{
+          title: 'Histórico',
           headerShown: true,
           headerTintColor: '#000',
           headerTitleStyle: {

@@ -71,6 +71,23 @@ export default class LoginScreen extends React.Component<Props, State> {
     focusNextField = (id: string) => {
         this.inputs[id].focus();
     };
+    componentDidMount = async () => {      
+        var loginAuto = await AsyncStorage.getItem("loginAuto")
+
+        if (loginAuto == 'true') {
+            this.loginautomatico()
+        }  
+    }
+    loginautomatico = async () => {
+
+        this.setState({
+            usuario: await AsyncStorage.getItem("login"),
+            senha: await AsyncStorage.getItem("senha")
+        })
+
+        this.login()
+
+    }
 
     login = async () => {
 
@@ -108,7 +125,8 @@ export default class LoginScreen extends React.Component<Props, State> {
                     await AsyncStorage.setItem("nome", JSON.stringify(token["dados"][0]["nome"]));
                     await AsyncStorage.setItem("id_firm", JSON.stringify(token["dados"][0]["id_firm"]));
                     await AsyncStorage.setItem("id_patient", JSON.stringify(token["dados"][0]["id_patient"]));
-
+                    await AsyncStorage.setItem("login",this.state.usuario);
+                    await AsyncStorage.setItem("senha",this.state.senha);
                     this.props.navigation.navigate("Scan");
 
                 } else {
@@ -150,9 +168,6 @@ export default class LoginScreen extends React.Component<Props, State> {
         this.setState({ mSenha: true })
     }
 
-    componentDidMount = async () => {        
-
-    }
 
 
     render() {
@@ -320,8 +335,8 @@ export const loginStyles = {
     },
     header: {
         alignItems: "center",
-        marginBottom: 100,
-        marginTop: 20
+        marginBottom: 80,
+        marginTop: 90
 
     } as ViewStyle,
     logo: {

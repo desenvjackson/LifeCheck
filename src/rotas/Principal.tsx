@@ -15,7 +15,7 @@ import Alertas from '../screens/operacoes/alertas';
 export default function cadastrodRoutes() {
     return (
 
-        <Tab.Navigator initialRouteName="Devices"
+        <Tab.Navigator initialRouteName="Home"
             tabBarOptions={{
                 activeTintColor: 'red',
                 labelPosition: 'below-icon', // Coloca a descrição dos botões abaixo
@@ -38,19 +38,8 @@ export default function cadastrodRoutes() {
 
         >
 
-            <Tab.Screen
-                name="Home"
-                component={Scan}
-                options={{
 
-                    tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={25} color="red"></FontAwesome5>
-                    ),
-                    unmountOnBlur: false
-                }}
-            />
-
-            <Tab.Screen
+            {/* <Tab.Screen
                 name="Histórico"
                 component={Telemetria}
                 options={{
@@ -58,10 +47,10 @@ export default function cadastrodRoutes() {
                     tabBarIcon: ({ }) => (
                         <FontAwesome5 name="history" style={{ paddingBottom: 30 }} size={25} color="black"></FontAwesome5>
                     ),
-                    unmountOnBlur: false
+                    unmountOnBlur: true
                 }}
             />
-
+*/}
             <Tab.Screen
                 name="Idosos"
                 component={Alertas}
@@ -70,10 +59,20 @@ export default function cadastrodRoutes() {
                     tabBarIcon: ({ }) => (
                         <FontAwesome5 name="hiking" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
                     ),
-                    unmountOnBlur: false
+                    unmountOnBlur: true
                 }}
             />
+            <Tab.Screen
+                name="Home"
+                component={Scan}
+                options={{
 
+                    tabBarIcon: ({ }) => (
+                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={30} color="red"></FontAwesome5>
+                    ),
+                    unmountOnBlur: true
+                }}
+            />
             <Tab.Screen
                 name="Opções"
                 component={Opcoes}
@@ -82,13 +81,9 @@ export default function cadastrodRoutes() {
                     tabBarIcon: ({ }) => (
                         <FontAwesome5 name="user-cog" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
                     ),
-                    unmountOnBlur: false
+                    unmountOnBlur: true
                 }}
             />
-
-    
-
-
         </Tab.Navigator>
 
     );

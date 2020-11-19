@@ -90,7 +90,27 @@ export default class HomeScreen extends PureComponent {
         frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false,
         nomeUsuario: '',
         deviceID: '',
+        stateLogin: true,
+        login: ''
     };
+    ativarLoginAuto = async () => {
+        await this.setState({
+            stateLogin: false,
+            login: 'true'
+        })
+        await AsyncStorage.setItem("loginAuto", this.state.login);
+
+    }
+
+    desativarLoginAuto = async () => {
+        await this.setState({
+            stateLogin: true,
+            login: 'false'
+        })
+
+        await AsyncStorage.setItem("loginAuto", this.state.login);
+
+    }
 
 
     connectBackgroundMeasurement = async () => {
@@ -117,8 +137,8 @@ export default class HomeScreen extends PureComponent {
         //await manager.cancelDeviceConnection(asyncdeviceID);
         // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
         const MonitoringPatient = { id_patient: id_patient }
-        var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));  
-        
+        var { data: returnData } = await api.post("monitoring/checkmonitoringschedule", "data=" + JSON.stringify(MonitoringPatient));
+
         //Passando o status da consulta, em caso de SUCESSO ou ERRO
         if (returnData["status"] === 'sucesso' && returnData["dados"] === 1) {
             try {
@@ -278,6 +298,18 @@ export default class HomeScreen extends PureComponent {
 
 
     componentDidMount = async () => {
+        //LoginAutomatico 
+        //Setar o state para mostrar o botão do login correto 
+        var loginAuto = await AsyncStorage.getItem("loginAuto")
+        if (loginAuto == 'true') {
+            this.setState({
+                stateLogin: false
+            })
+        } else {
+            this.setState({
+                stateLogin: true
+            })
+        }
 
         AppState.addEventListener('change', state => {
             if (state === 'active') {
@@ -918,7 +950,7 @@ export default class HomeScreen extends PureComponent {
                             </TouchableOpacity>
 
 
-                            <TouchableOpacity >
+                            <TouchableOpacity onPress={()=>  this.props.navigation.navigate("Historico") }>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"history"} size={50} color="navy" /> </Text>
@@ -932,14 +964,98 @@ export default class HomeScreen extends PureComponent {
 
                         <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
 
-                            <TouchableOpacity >
-                                <View style={styles.cardBorderMenu}>
-                                    <View >
-                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text>
-                                        <Text style={styles.textTextDescricao} >  LOGIN AUTOMÁTICO  </Text>
+                            {this.state.stateLogin &&
+                                <TouchableOpacity onPress={() => this.ativarLoginAuto()} >
+                                    <View style={{
+                                        backgroundColor: "white",
+                                        flex: 1,
+                                        //padding: 10,
+                                        //margin: 50, 
+                                        marginRight: 10,
+                                        marginBottom: 10,
+                                        marginTop: 20,
+                                        marginLeft: 10,
+
+                                        width: 115,
+                                        height: 120,
+
+                                        borderColor: "navy",
+                                        borderWidth: 1,
+
+                                        borderTopLeftRadius: 10,
+                                        borderTopRightRadius: 10,
+                                        borderBottomLeftRadius: 10,
+                                        borderBottomRightRadius: 10,
+
+                                        shadowColor: 'black',
+                                        shadowOffset: { width: 50, height: 50 },
+                                        shadowOpacity: 3,
+                                        shadowRadius: 50,
+                                        //elevation: 17,
+
+                                        alignContent: "center",
+                                        alignItems: "center",
+                                        alignSelf: "center",
+                                    }}>
+                                        <View >
+                                            <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text>
+                                            <Text style={styles.textTextDescricao} >  LOGIN AUTOMÁTICO  </Text>
+                                            <Text style={{
+                                                fontSize: 12, color: "navy", opacity: 0.4, alignItems: "center",
+                                                alignSelf: "center", paddingBottom: 2
+                                            }}>Desativado </Text>
+
+                                        </View>
                                     </View>
-                                </View>
-                            </TouchableOpacity>
+                                </TouchableOpacity>
+
+                            }
+                            {!this.state.stateLogin &&
+                                <TouchableOpacity onPress={() => this.desativarLoginAuto()} >
+                                    <View style={{
+                                        backgroundColor: "green",
+                                        flex: 1,
+                                        //padding: 10,
+                                        //margin: 50, 
+                                        marginRight: 10,
+                                        marginBottom: 10,
+                                        marginTop: 20,
+                                        marginLeft: 10,
+
+                                        width: 115,
+                                        height: 120,
+
+                                        borderColor: "navy",
+                                        borderWidth: 1,
+
+                                        borderTopLeftRadius: 10,
+                                        borderTopRightRadius: 10,
+                                        borderBottomLeftRadius: 10,
+                                        borderBottomRightRadius: 10,
+
+                                        shadowColor: 'black',
+                                        shadowOffset: { width: 50, height: 50 },
+                                        shadowOpacity: 3,
+                                        shadowRadius: 50,
+                                        //elevation: 17,
+
+                                        alignContent: "center",
+                                        alignItems: "center",
+                                        alignSelf: "center",
+                                    }}>
+                                        <View >
+                                            <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock"} size={50} color="navy" /> </Text>
+                                            <Text style={styles.textTextDescricao} >  LOGIN AUTOMÁTICO  </Text>
+                                            <Text style={{
+                                                fontSize: 12, color: "navy", opacity: 0.7, alignItems: "center",
+                                                alignSelf: "center", paddingBottom: 2
+                                            }}>Ativado </Text>
+
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+
+                            }
 
 
                             <TouchableOpacity >
@@ -1021,7 +1137,7 @@ export default class HomeScreen extends PureComponent {
                             <FontAwesome5 name="bluetooth" size={22} color='navy'></FontAwesome5> Lista de Dispositivos:
                        </Text>
 
-                        <View style={{ paddingLeft: 30, paddingTop: 15 , backgroundColor: '#DCDCDC' }}>
+                        <View style={{ paddingLeft: 30, paddingTop: 15, backgroundColor: '#DCDCDC' }}>
                             <Text >
                                 Último ID conectado: {this.state.deviceID} {"\n"}
                             </Text>

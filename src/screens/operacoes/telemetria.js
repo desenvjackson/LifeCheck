@@ -1,237 +1,308 @@
-import React, { Component } from 'react';
-import { Platform, View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, ActivityIndicator, RefreshControl } from 'react-native';
-import { Card, ListItem, Button, Icon } from 'react-native-elements'
+import React, { PureComponent } from 'react';
+import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, } from 'react-native';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-
-import {
-  BleManager,
-  BleError,
-  Device,
-  LogLevel,
-  Characteristic,
-} from 'react-native-ble-plx';
-
-import AsyncStorage from '@react-native-community/async-storage';
+import api from '../services/index'
+import Styles, { Variables } from "../../styles";
+import Modal from 'react-native-modal';
 
 
-const manager = new BleManager();
-
-export default class telemetria extends Component {
-
-  constructor() {
-    super()
-    this.state = { info: "", values: {}, loading: false, refreshing: false, device: "" }
-    this.state = { hrv: "", frequenciaCardiaca: "", estresse: "", hiperTensao: "", hipoTensao: "" }
-    this.state = { humor: "", frequenciaRespiratoria: "" }
-
-    //componentDidMount = async () => {
-    //console.log('Tela de telemetrias');
-    //}
 
 
-  }
+export default class telemetria extends PureComponent {
 
+  state = {
+    carregarDataSoucer: false,
+    modalMedicao: false,
+    dataSource: [],
+    frequenciaCardiaca: "",
+    oxigenio: "",
+    hipoTensao: "",
+    hipoTensao: "",
+    temperatura: "",
+    nome: "",
+    sobrenome: "",
+    data: "",
+    cor: ""
+  };
   componentDidMount = async () => {
-    await AsyncStorage.setItem("notificando", "0")
-    this.carregaTelemetria();
-  }
 
-  carregaTelemetria = async () => {
-    // setInterval(this.cancelaTelemetria, 1500);
-    let notificando = await AsyncStorage.getItem("notificando")
-
-    this.timer = setTimeout(() => {
-      this.carregaTelemetria();
-    }, 1000);
-
-    // console.log ( " ######################################################################################### ") 
-
-    let frequenciaCardiaca = await AsyncStorage.getItem("frequenciaCardiaca")
-    let oxigenio = await AsyncStorage.getItem("oxigenio")
-    let hiperTensao = await AsyncStorage.getItem("hiperTensao")
-    let hipoTensao = await AsyncStorage.getItem("hipoTensao")
-
-    //tratamento do nivel de HRV
-    await this.setState({ frequenciaCardiaca: frequenciaCardiaca, hiperTensao: hiperTensao, hipoTensao: hipoTensao })
-    await this.setState({ oxigenio: oxigenio })
-
-    if (notificando === "1") {
-      this.setState({ loading: true })
-    } else {
-      this.setState({ loading: false })
-    }
-
-
-  }
-
-  cancelaTelemetria = async () => {
-    this.setState({ refreshing: false, loading: false })
-    clearInterval();
+    this.meusRegistros()
+    //setInterval(this.listMonitoringForFirm, 1000)
   }
 
 
-  carregaFrequenciaCardiaca = async () => {
-
-    // assuming the 'device' is already connected
-    //const device = await AsyncStorage.getItem('TASKS'); 
-    await device.discoverAllServicesAndCharacteristics();
-    const services = await device.services();
-
-    // Ativa Monitoramento Cardiaco
-    let UART_SERVICE = "0000180d-0000-1000-8000-00805f9b34fb" // UART Service
-    let TX_CHARACT = "00002a37-0000-1000-8000-00805f9b34fb" // TX Characteristic (Property = Notify) - "Heart Rate Measurement"
-
+  meusRegistros = async () => {
+    this.setState({
+      carregarDataSoucer: true
+    })
     try {
-      let char = await manager.monitorCharacteristicForDevice(device.id,
-        UART_SERVICE,
-        TX_CHARACT,
-        this.onUARTSubscriptionUpdate
-      );
-    } catch (err) {
-      console.log(JSON.stringify(err))
 
+      const data = {
+        id_firm: 1
+      }
+
+      var { data: token } = await api.post("monitoring/listMonitoringForFirm", "data=" + JSON.stringify(data))
+
+
+      if (token["status"] === 'sucesso') {
+
+
+        this.setState({
+          dataSource: token["dados"],
+        });
+        console.log(JSON.stringify(this.state.dataSource))
+        this.setState({
+          carregarDataSoucer: false
+        })
+      } else {
+        this.setState({
+          carregarDataSoucer: false,
+        })
+
+      }
+
+    } catch (err) {
+
+      alert(err);
 
     }
   }
 
-
+  abrirModal = async (frequenciacardiaca, oxigenio, hipertensao, hipotensao, temperatura, nome, sobrenome, date_monitor) => {
+    await this.setState({
+      modalMedicao: true,
+      frequenciaCardiaca: frequenciacardiaca,
+      oxigenio: oxigenio,
+      hiperTensao: hipertensao,
+      hipoTensao: hipotensao,
+      temperatura: temperatura,
+      nome: nome,
+      sobrenome: sobrenome,
+      data: date_monitor
+    })
+    console.log(frequenciacardiaca, oxigenio, hipertensao, hipotensao, temperatura, nome, sobrenome, date_monitor)
+  }
+  fechaModal = async () => {
+    await this.setState({
+      modalMedicao: false,
+      frequenciaCardiaca: "",
+      oxigenio: "",
+      hiperTensao: "",
+      hipoTensao: "",
+      temperatura: "",
+      data: ""
+    })
+  }
 
   render() {
     return (
-      <>
 
-        <StatusBar
-          animated={true}
-          translucent={true}
-          barStyle={'light-content'}
-          backgroundColor="gray"
-        />
+      <ScrollView style={{ width: "100%" }}  >
+        {this.state.carregarDataSoucer &&
+          <View style={{ alignItems: 'center', marginTop: '50%' }}>
+            <ActivityIndicator size={"small"} color={Variables.colors.black} style={{ padding: 40 }} />
+            <Text>Carregando... </Text>
 
-        <View
-          style={{
-            paddingTop: 10,
-            backgroundColor: "white"
-          }}
+          </View>
 
+        }
+        {!this.state.carregarDataSoucer &&
+
+          <View style={{ width: "100%", paddingTop: 20, paddingBottom: 10 }}  >
+            {this.state.dataSource.map((op) => {
+              return (
+                <>
+                  < TouchableOpacity
+                    onPress={() => this.abrirModal(op.frequenciacardiaca, op.oxigenio, op.hipertensao, op.hipotensao, op.temperatura, op.nome, op.sobrenome, op.date_monitor)}
+                    style={{
+                      width: '100%',
+                      height: 80,
+                      backgroundColor: "white",
+                      borderBottomWidth: 1,
+                      // justifyContent: 'center',
+                      alignItems: 'center',
+                      marginBottom: 1,
+                      flexDirection: "row",
+                      borderColor: Variables.colors.grayLight,
+                      //  borderRadius: 0,
+                      //borderTopLeftRadius: 5,
+                      // borderTopRightRadius: 5,
+                      // borderBottomLeftRadius: 5,
+                      //borderBottomRightRadius: 5,
+                    }}>
+                    <View style={{ paddingBottom: 10, paddingRight: 15, paddingLeft: 15 }}>
+                      {op.temperatura < 37 && op.oxigenio > 89 && op.frequenciacardiaca < 120 && op.hipertensao < 140 && op.hipotensao < 90 ?
+                        <FontAwesome5 name={"smile"} size={30} color="green" />
+                        :
+                        <FontAwesome5 name={"meh"} size={30} color="#D16406" />
+                      }
+                    </View>
+                    <View style={{ paddingBottom: 15 }}>
+                      {op.temperatura < 37 && op.oxigenio > 89 && op.frequenciacardiaca < 120 && op.hipertensao < 140 && op.hipotensao < 90 ?
+                        <Text style={{ fontSize: 20, color: "green", opacity: 0.6, paddingTop: 5 }} >Bom</Text>
+                        :
+                        <Text style={{ fontSize: 20, color: "#D16406", opacity: 0.6, paddingTop: 5 }} >Atenção</Text>
+                      }
+                      <Text style={{ fontSize: 12, color: "gray", opacity: 0.6, paddingTop: 5 }}>{op.date_monitor} </Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              );
+            })}
+          </View>
+        }
+
+        <Modal
+          isVisible={this.state.modalMedicao}
+          animationIn={"slideInLeft"}
+          onBackButtonPress={() => this.fechaModal}
+          style={{ backgroundColor: 'white', marginTop: 110, marginBottom: 110 }}
         >
+          <ScrollView>
+
+            <View >
+              <View style={styles.textlogoMedicao}>
+                <View style={{ paddingBottom: 20, paddingRight: 15, paddingLeft: 15 }}>
+                  <Image style={{
+                    width: 70, height: 70, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                  }} source={require('../../assets/user.png')}></Image>
+
+                </View>
+                <View style={{ paddingBottom: 37 }}>
+                  <Text style={{ fontSize: 20, color: "black" }} >
+                    {this.state.nome} {this.state.sobrenome}
+                  </Text>
+
+                  <Text style={{ fontSize: 12, color: "gray", opacity: 0.6, paddingTop: 10 }} >
+                    {this.state.data}
+                  </Text>
+                </View>
+              </View>
+
+              <View>
+
+                <View style={styles.bodyModal}>
+                  <FontAwesome5 name={"heartbeat"} size={25} color="navy" />
+                  <Text style={styles.textModalstate}> {this.state.frequenciaCardiaca}</Text>
+                  <Text style={styles.textModalinfo}> ( bpm )</Text>
+                  <Text style={styles.textModalinfo}> Frequência Cardíaca </Text>
+                </View>
 
 
-          <ScrollView style={{ padding: 10 }}
-            refreshControl={
-              <RefreshControl refreshing={this.state.refreshing} onRefresh={this.carregaTelemetria} />
-            }
+                <View style={styles.bodyModal}>
+                  <FontAwesome5 name={"stethoscope"} size={25} color="navy" />
+                  <Text style={styles.textModalstate}> {this.state.hiperTensao}/{this.state.hipoTensao}</Text>
+                  <Text style={styles.textModalinfo}> ( mmhg )</Text>
+                  <Text style={styles.textModalinfo}> Pressão arterial </Text>
+                </View>
 
-          >
+                <View style={styles.bodyModal}>
+                  <FontAwesome5 name={"tint"} size={25} color="navy" />
+                  <Text style={styles.textModalstate}> {this.state.oxigenio}</Text>
+                  <Text style={styles.textModalinfo}> ( SpO2 % )</Text>
+                  <Text style={styles.textModalinfo}> Saturação do oxigênio</Text>
+                </View>
 
-            <View style={{ padding: 10 }}>
-            <Text style={styles.textTextDescricaoTitulo} ><FontAwesome5 name={"cogs"} size={18} color="gray" />  Medição  </Text>
+                <View style={styles.bodyModal}>
+                  <FontAwesome5 name={"thermometer-half"} size={25} color="navy" />
+                  <Text style={styles.textModalstate}> {this.state.temperatura}</Text>
+                  <Text style={styles.textModalinfo}> ( °C )</Text>
+                  <Text style={styles.textModalinfo}> Temperatura</Text>
+
+                </View>
+              </View>
+
             </View>
 
-            <TouchableOpacity onPress={this.carregaFrequenciaCardiaca}>
-              <View style={styles.cardBorder}>
-                <View style={{ height: 0 }}>
-                  <FontAwesome5 name={"heartbeat"} size={30} color="red" />
-                </View>
-                <View style={{ paddingLeft: "15%" }}  >
-                  <Text style={styles.titleText} >Frequência cardíaca : <Text style={styles.textText} > {this.state.frequenciaCardiaca} </Text> <Text style={styles.textTextDescricao}>bpm </Text> </Text>
-                  <View style={{ flexDirection: "row" }}>
-
-
-                  </View>
-                </View>
-              </View>
+            <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", marginTop: 20 }}
+              onPress={this.fechaModal} >
+              <FontAwesome5 name='sign-out-alt' color='navy' size={17} > Sair </FontAwesome5>
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={this.carregaTelemetria}>
-              <View style={styles.cardBorder}>
-                <View style={{ height: 0 }}>
-                  <FontAwesome5 name={"stethoscope"} size={30} color="black" />
-                </View>
-                <View style={{ paddingLeft: "15%" }}  >
-                  <Text style={styles.titleText} >Pressão Arterial: <Text style={styles.textText} >  {this.state.hiperTensao} / {this.state.hipoTensao} <Text style={styles.textTextDescricao}> mmhg </Text> </Text>  </Text>
-                  <View style={{ flexDirection: "row" }}>
-
-
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={this.carregaTelemetria}>
-              <View style={styles.cardBorder}>
-                <View style={{ height: 0 }}>
-                  <FontAwesome5 name={"file-medical-alt"} size={30} color="black" />
-                </View>
-                <View style={{ paddingLeft: "15%" }}  >
-                  <Text style={styles.titleText} >Oxigênio (SpO2): <Text style={styles.textText} >  {this.state.oxigenio} </Text> </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-               
-            <TouchableOpacity onPress={this.carregaTelemetria}>
-              <View style={styles.cardBorder}>
-                <View style={{ height: 0 }}>
-                  <FontAwesome5 name={"thermometer"} size={30} color="black" />
-                </View>
-                <View style={{ paddingLeft: "15%" }}  >
-                  <Text style={styles.titleText} >Temperatura:  <Text style={styles.textText} >  36.5 °C </Text>  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            <View style={{ padding: 10 }}>
-              {this.state.loading &&
-                <ActivityIndicator size={"large"} color="#999999" style={{ marginTop: 9, justifyContent: "center" }} />
-              }
-            </View>
 
 
           </ScrollView>
-
-        </View>
-
-      </>
+        </Modal>
+      </ScrollView >
     )
   }
-
-
 
 }
 
 const styles = StyleSheet.create({
-  baseText: {
-    fontFamily: "Cochin"
+
+  textlogoMedicao: {
+    alignContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    flexDirection: 'row',
+    marginTop: 20,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    width: '100%'
+
   },
-  titleText: {
-    fontSize: 16,
-    fontWeight: "bold"
-  },
+
+
   textText: {
-    fontSize: 16,
-    color: "gray",
-    //fontWeight: "bold"
+    fontSize: 28,
+    color: "navy",
+    fontWeight: "bold",
+    alignContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    textAlign: "center",
+    textAlignVertical: "center",
+    marginTop: 12,
   },
   textTextDescricao: {
     fontSize: 12,
-    color: "gray",
-    marginTop: "2%"
+    color: "navy",
+    fontWeight: "bold",
+    marginTop: 10,
+    alignContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    textAlign: "center",
+    textAlignVertical: "center",
+    //fontWeight: "bold",
   },
-  textTextDescricaoTitulo: {
-    fontSize: 20,
-    color: "gray",
-    marginTop: "2%"    
+  titleText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    paddingBottom: 10,
   },
+  titleTextTitulo: {
+    fontSize: 12,
+    //fontWeight: "bold",
+    alignContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    textAlign: "center",
+    textAlignVertical: "center",
+    // marginTop: 10,
+  },
+
+
   cardBorder: {
-    //borderTopRightRadius: 80,
-    //borderBottomRightRadius: 30,
-    //borderBottomLeftRadius: 50,
     backgroundColor: "white",
     flex: 1,
-    padding: 20,
-    margin: 5,
-    borderColor: "gray",
-    // borderStyle: 'dashed',
-    borderWidth: 0.3,
+  },
+  bodyModal: {
+    alignItems: 'center',
+    marginBottom: 15,
+    flexDirection: "row",
+    padding: 5,
+    width: '100%',
+    backgroundColor: Variables.colors.gray,
+  },
+
+  textModalstate: {
+    color: "navy",
+    fontSize: 25
+  },
+  textModalinfo: {
+    color: "gray"
   }
+
+
 });
