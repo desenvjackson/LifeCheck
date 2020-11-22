@@ -8,7 +8,7 @@ const Tab = createBottomTabNavigator();
 import Scan from '../screens/Home/index';
 import Medicao from '../screens/operacoes/medicao';
 import Telemetria from '../screens/operacoes/telemetria';
-import Opcoes from '../screens/operacoes/opcoes';
+// import Opcoes from '../screens/operacoes/opcoes';
 import Alertas from '../screens/operacoes/alertas';
 
 
@@ -51,17 +51,7 @@ export default function cadastrodRoutes() {
                 }}
             />
 */}
-            <Tab.Screen
-                name="Idosos"
-                component={Alertas}
-                options={{
 
-                    tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="hiking" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
-                    ),
-                    unmountOnBlur: true
-                }}
-            />
             <Tab.Screen
                 name="Home"
                 component={Scan}
@@ -74,6 +64,19 @@ export default function cadastrodRoutes() {
                 }}
             />
             <Tab.Screen
+                name="Idosos"
+                component={Alertas}
+                options={{
+
+                    tabBarIcon: ({ }) => (
+                        <FontAwesome5 name="hiking" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
+                    ),
+                    unmountOnBlur: true
+                }}
+            />
+
+            {/*
+            <Tab.Screen
                 name="Opções"
                 component={Opcoes}
                 options={{
@@ -84,6 +87,7 @@ export default function cadastrodRoutes() {
                     unmountOnBlur: true
                 }}
             />
+            */}
         </Tab.Navigator>
 
     );

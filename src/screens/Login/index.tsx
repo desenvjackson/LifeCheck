@@ -60,8 +60,8 @@ export default class LoginScreen extends React.Component<Props, State> {
         // Cria o state do componente
         this.state = {
             loading: true,
-            usuario: "matheus@renovy.com.br",
-            senha: "123456",
+            usuario: "",
+            senha: "",
             error: '',
             login: "",
             mSenha: true,
@@ -129,6 +129,8 @@ export default class LoginScreen extends React.Component<Props, State> {
                     await AsyncStorage.setItem("senha", this.state.senha);
                     if (token["dados"][0]["avatar"] != null) {
                         await AsyncStorage.setItem("avatar", token["dados"][0]["avatar"])
+                    }else{
+                        await AsyncStorage.setItem("avatar", "")
                     }
                     this.props.navigation.navigate("Scan");
 

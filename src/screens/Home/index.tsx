@@ -13,9 +13,10 @@ import {
     StatusBar,
     ScrollView,
     Image,
-    SectionList, AppState
+    SectionList, AppState,
+    Switch
 } from 'react-native';
-import { Card, Title, Paragraph, TextInput, Switch, Checkbox, RadioButton, ToggleButton } from 'react-native-paper';
+import { Card, Title, Paragraph, TextInput, Checkbox, RadioButton, ToggleButton } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 const window = Dimensions.get('window');
 import LocationServicesDialogBox from "react-native-android-location-services-dialog-box";
@@ -35,6 +36,7 @@ import AndroidWhitelist from 'react-native-android-whitelist';
 import BackgroundJob from 'react-native-background-actions';
 import Styles, { Variables } from "../../styles";
 import { RNCamera } from 'react-native-camera';
+
 
 
 interface Props {
@@ -103,7 +105,9 @@ export default class HomeScreen extends PureComponent {
         telaCamera: false,
         textoCamera: '',
         salvandoFoto: false,
-        indicatorFoto: false
+        indicatorFoto: false,
+        ativarMedicaoSegundoPlano: false,
+        switchValueAutoMedicao: false,
     };
     ativarLoginAuto = async () => {
         await this.setState({
@@ -111,7 +115,6 @@ export default class HomeScreen extends PureComponent {
             login: 'true'
         })
         await AsyncStorage.setItem("loginAuto", this.state.login);
-
     }
 
     desativarLoginAuto = async () => {
@@ -124,6 +127,33 @@ export default class HomeScreen extends PureComponent {
 
     }
 
+    ativarMedicaoSegundoPlano = async () => {
+
+      
+        Alert.alert(
+            'Localização',
+            '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
+            'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
+            'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
+            'Deseja ativar a medição em segundo plano ?',
+            [
+                {
+                    text: 'Desativar medição',
+                    onPress: () => { this.stopBackGround() }
+                },
+                {
+                    text: 'Não',
+                    onPress: () => { this.toggleSwitchAutoMedicao(false) },
+                },
+                {
+                    text: 'Permitir o tempo todo',
+                    onPress: () => { this.processBackgroundMeasurement() },
+                },
+            ],
+            { cancelable: false },
+        );
+
+    }
 
     connectBackgroundMeasurement = async () => {
 
@@ -188,6 +218,8 @@ export default class HomeScreen extends PureComponent {
 
     processBackgroundMeasurement = async () => {
 
+        await this.toggleSwitchAutoMedicao(true)
+
         let options = {
             taskName: 'Example',
             taskTitle: 'Medição em segundo plano',
@@ -199,8 +231,9 @@ export default class HomeScreen extends PureComponent {
             color: '#000080',
             linkingURI: 'exampleScheme://chat/jane',
             parameters: {
-                delay: 1200000,
-                // delay:  60000,
+                  delay:  1200000,
+                //delay:   300000,
+                //delay:    60000,
             },
         }
 
@@ -245,6 +278,7 @@ export default class HomeScreen extends PureComponent {
     stopBackGround = async () => {
         console.log("stopBackGround")
         await BackgroundJob.stop();
+        await this.toggleSwitchAutoMedicao(false)
     }
 
     getWhiteListPermission = async () => {
@@ -284,9 +318,13 @@ export default class HomeScreen extends PureComponent {
             let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
                 {
                     title: 'Permissão para usar a localização',
-                    message: 'O aplicativo precisa de permissão para utilizar a sua localização',
+                    //message: 'O aplicativo precisa de permissão para utilizar a sua localização',
+                    message: '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
+                    'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
+                    'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
+                    'Deseja ativar ?',
                     buttonNegative: 'Cancelar',
-                    buttonPositive: 'OK',
+                    buttonPositive: 'Sim',
                 });
             if (granted === PermissionsAndroid.RESULTS.GRANTED) {
                 console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
@@ -296,17 +334,61 @@ export default class HomeScreen extends PureComponent {
         } catch (error) {
             console.log(error);
         }
-        if (Platform.OS === 'android')
-            LocationServicesDialogBox.checkLocationServicesIsEnabled({
-                message: "<h2>Permissão Bluetooth</h2> \
-                                Isso é necessário para o bluetooth ser capaz de verificar se há periféricos em seu ambiente.<br/><br/>\
-                                Ativar o GPS.<br/><br/>",
-                ok: "SIM",
-                cancel: "Não"
-            }).then(() => {
-                // locationTracking(dispatch, getState, geolocationSettings)
-            })
+
+        LocationServicesDialogBox.checkLocationServicesIsEnabled({
+            message: "<h2> Permissão para Ativar Localização GPS.</h2> \
+                          Ativar a localização do GPS é necessária para o Bluetooth se conectar ao relógio e realizar as medições em segundo plano.<br/><br/>\
+                          IMPORTANTE: Não usaremos sua localização atual atráves do GPS. Somente o serviço de Bluetooth usará para localizar o relógio.<br/><br/>\
+                          Uma janela de notificação ficará aberta enquanto o modo de medição em segundo plano estiver ativo. <br/><br/>\
+                          Ativar o GPS ?<br/><br/>",
+            ok: "SIM",
+            cancel: "Não"
+        }).then(() => {
+            // locationTracking(dispatch, getState, geolocationSettings)
+        })
     }
+
+    requestBackgroundLocation = async () => {
+
+        const locationResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION); 
+        const backgroundResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
+
+        console.log ( "requestBackgroundLocation  0000000000 " + backgroundResult  )
+        
+        try {
+            let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+                {
+                    title: 'Permissão para usar a localização',
+                    message: 'O aplicativo precisa de permissão para utilizar a sua localização',
+                    buttonNegative: 'Cancelar',
+                    buttonPositive: 'OK',
+                });
+            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                console.log("PermissionsAndroid.RESULTS.GRANTED [ requestBackgroundLocation ] = OK");
+            } else {
+                console.log("PermissionsAndroid.RESULTS.GRANTED [ requestBackgroundLocation ] = NOT PERMISSION");
+            }
+
+            console.log ( "requestBackgroundLocation  #### " + granted)
+
+        } catch (error) {
+            console.log(error);        }
+
+
+        LocationServicesDialogBox.checkLocationServicesIsEnabled({
+            message: "<h2> Permissão para Ativar Localização GPS.</h2> \
+                          Ativar a localização do GPS é necessária para o Bluetooth se conectar ao relógio e realizar as medições em segundo plano.<br/><br/>\
+                          IMPORTANTE: Não usaremos sua localização atual atráves do GPS. Somente o serviço de Bluetooth usará para localizar o relógio.<br/><br/>\
+                          Uma janela de notificação ficará aberta enquanto o modo de medição em segundo plano estiver ativo. <br/><br/>\
+                          Ativar o GPS ?<br/><br/>",
+            ok: "SIM",
+            cancel: "Não"
+        }).then(() => {
+            // locationTracking(dispatch, getState, geolocationSettings)
+        })
+ 
+    }
+
     permissionsFotos = async () => {
         var granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA,
             {
@@ -336,20 +418,15 @@ export default class HomeScreen extends PureComponent {
 
         AppState.addEventListener('change', state => {
             if (state === 'active') {
-                Alert.alert("INSTANT CHECK", "Enquanto seu APP estiver aberto, o modo de medição em segundo plano fica desativado.")
                 this.stopBackGround()
                 console.log("active");
             } else if (state === 'background') {
                 console.log("background")
-                this.processBackgroundMeasurement()
             } else if (state === 'inactive') {
                 console.log("inactive");
             }
         });
 
-
-        //Inicia processo em background - medicao
-        // await this.processBackgroundMeasurement()
 
         //Ligando o bluetooth
         manager.enable();
@@ -360,7 +437,10 @@ export default class HomeScreen extends PureComponent {
         //Permissão para liberar a medição em segundo plano, sem monitoração do uso de bateria.
         //await this.getWhiteListPermission()
 
-        console.log("check getBluetoothScanPermission access permission...")
+        // Permissão para execução do app em modo requestBackgroundLocation
+        //await this.requestBackgroundLocation()
+
+        //console.log("check getBluetoothScanPermission access permission...")
         await this.getBluetoothScanPermission()
 
         console.log("check requestLocationPermission access permission...")
@@ -370,9 +450,11 @@ export default class HomeScreen extends PureComponent {
 
         // Pegando nome do usuário logado e o último device conectador
         let nomeUsuario = await AsyncStorage.getItem("nome")
-        nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ", "")
+        nomeUsuario = nomeUsuario.replace(/[\\"]/g, '')
+
         let deviceID = await AsyncStorage.getItem("asyncdeviceID")
         this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
+
         //carregando foto
         let avatar = await AsyncStorage.getItem("avatar")
         if (avatar != null) {
@@ -381,6 +463,19 @@ export default class HomeScreen extends PureComponent {
             })
         }
         console.log('avatar' + this.state.avatar)
+
+        // Pegando ultimo status da Auto medicão
+        let automedicao = await AsyncStorage.getItem("automedicao")
+        if (automedicao == 'true') {
+            this.setState({
+                switchValueAutoMedicao: true
+            })
+        } else {
+            this.setState({
+                switchValueAutoMedicao: false
+            })
+        }
+
     }
 
 
@@ -763,23 +858,17 @@ export default class HomeScreen extends PureComponent {
     };
 
     toggleSwitchCardiaco = async (value) => {
-
         this.setState({ switchValueCardiaco: value })
-
         //await AsyncStorage.setItem("loginAuto", this.state.switchValue.toString());
     }
 
     toggleSwitchPressao = async (value) => {
-
         this.setState({ switchValuePressao: value })
-
         //await AsyncStorage.setItem("loginAuto", this.state.switchValue.toString());
     }
 
     toggleSwitchDiabete = async (value) => {
-
         this.setState({ switchValueDiabete: value })
-
         //await AsyncStorage.setItem("loginAuto", this.state.switchValue.toString());
     }
 
@@ -790,7 +879,17 @@ export default class HomeScreen extends PureComponent {
 
     telaLogin = async () => {
         this.props.navigation.navigate("Login")
+    }
 
+    toggleSwitchAutoMedicao = async (value) => {
+        console.log ("toggleSwitchAutoMedicao " + value)
+        this.setState({ switchValueAutoMedicao: value })
+        if (value){
+            await AsyncStorage.setItem("automedicao",'true' )
+        }else {
+            await AsyncStorage.setItem("automedicao",'false' )
+        }  
+      
     }
 
     novaMedicao = async (device, comando) => {
@@ -1102,7 +1201,7 @@ export default class HomeScreen extends PureComponent {
                                 <View style={styles.cardBorderMenu}>
                                     <View >
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text>
-                                        <Text style={styles.textTextDescricao} >  MULTIMEDIÇÃO  </Text>
+                                        <Text style={styles.textTextDescricao} >  MEDIÇÕES {"\n"} VITAIS </Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
@@ -1131,7 +1230,7 @@ export default class HomeScreen extends PureComponent {
                                         //margin: 50, 
                                         marginRight: 10,
                                         marginBottom: 10,
-                                        marginTop: 20,
+                                        //marginTop: 20,
                                         marginLeft: 10,
 
                                         width: 115,
@@ -1171,13 +1270,13 @@ export default class HomeScreen extends PureComponent {
                             {!this.state.stateLogin &&
                                 <TouchableOpacity onPress={() => this.desativarLoginAuto()} >
                                     <View style={{
-                                        backgroundColor: "green",
+                                        backgroundColor: "#d3d3d3",
                                         flex: 1,
                                         //padding: 10,
                                         //margin: 50, 
                                         marginRight: 10,
                                         marginBottom: 10,
-                                        marginTop: 20,
+                                        // marginTop: 20,
                                         marginLeft: 10,
 
                                         width: 115,
@@ -1216,25 +1315,41 @@ export default class HomeScreen extends PureComponent {
                             }
 
 
-                            <TouchableOpacity >
+                            <TouchableOpacity onPress={() => this.props.navigation.navigate("Opcoes")}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"user-cog"} size={50} color="navy" /> </Text>
-                                        <Text style={styles.textTextDescricao} >  OPÇÔES  </Text>
+                                        <Text style={styles.textTextDescricao} >OPÇÕES</Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
+
                         </View>
 
-
-                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
-                            <TouchableOpacity >
+                        {/*
+                        <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
+                            <View style={styles.cardBorderMenuAuto}>
                                 <View >
-                                    <Text style={styles.titleTextBodyMenu} >  </Text>
-                                    <Text style={styles.textTextDescricao} >   </Text>
+                                    <Text style={styles.textTextDescricaoAuto} >  Ativar medição em Segundo Plano </Text>
                                 </View>
-                            </TouchableOpacity>
-                        </View>
+                            </View>
+                        </TouchableOpacity>
+                        */}
+
+                        <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
+                        <View style={styles.cardBorderMenuAuto}>
+                                <Text style={styles.textTextDescricaoAuto}>
+                                    {this.state.switchValueAutoMedicao ? 'Auto medição - Ativado' : 'Auto medição - Desativado'}
+                                    </Text>
+                                <Switch
+                                    style={{ 
+                                        paddingLeft: 1
+                                    }}
+                                    onValueChange={this.ativarMedicaoSegundoPlano}
+                                    value={this.state.switchValueAutoMedicao}
+                                />
+                            </View>
+                        </TouchableOpacity>
 
 
                     </ScrollView>
@@ -1570,7 +1685,7 @@ export default class HomeScreen extends PureComponent {
                                     resizeMode="contain"
                                     style={styles.logoMedicao}
                                 />
-                                <Text style={styles.textlogoMedicao} > MULTIMEDIÇÃO  </Text>
+                                <Text style={styles.textlogoMedicao} > MEDIÇÕES VITAIS  </Text>
 
                                 <View style={{ flexDirection: "row", justifyContent: "center" }}>
 
@@ -1646,7 +1761,7 @@ export default class HomeScreen extends PureComponent {
 
                                 <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", margin: 3, paddingTop: 1, paddingLeft: 0 }}
                                     onPress={this.fechaModal} >
-                                    <FontAwesome5 name='sign-out-alt' color='navy' size={17} > Sair </FontAwesome5>
+                                    <FontAwesome5 name='sign-out-alt' color='navy' size={25} > Sair </FontAwesome5>
                                 </TouchableOpacity>
 
                             </View>
@@ -1900,6 +2015,19 @@ const styles = StyleSheet.create({
         textAlignVertical: "center",
         //fontWeight: "bold",
     },
+    textTextDescricaoAuto: {
+        fontSize: 15,
+        color: "navy",
+        //fontWeight: "bold",
+        paddingLeft: 14,
+        //marginTop: 10,
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+        //fontWeight: "bold",
+    },
     titleText: {
         fontSize: 24,
         fontWeight: "bold",
@@ -1972,7 +2100,7 @@ const styles = StyleSheet.create({
         //margin: 50, 
         marginRight: 10,
         marginBottom: 10,
-        marginTop: 20,
+        marginTop: 0,
         marginLeft: 10,
 
         width: 115,
@@ -1998,6 +2126,41 @@ const styles = StyleSheet.create({
         textAlign: "center",
         textAlignVertical: "center",
     },
+    cardBorderMenuAuto: {
+        backgroundColor: "white",
+        flex: 1,
+        //padding: 10,
+        //margin: 50, 
+        marginRight: 10,
+        marginBottom: 10,
+        marginTop: 20,
+        marginLeft: 10,
+
+        width: "70%",
+        height: 45,
+
+        borderColor: "navy",
+        borderWidth: 1,
+
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        borderBottomLeftRadius: 10,
+        borderBottomRightRadius: 10,
+
+        shadowColor: 'black',
+        shadowOffset: { width: 50, height: 50 },
+        shadowOpacity: 3,
+        shadowRadius: 50,
+        //elevation: 17,
+
+        alignContent: "center",
+        alignItems: "center",
+        alignSelf: "center",
+        textAlign: "center",
+        textAlignVertical: "center",
+
+        flexDirection: "row" 
+    },
     cardBorderPersonal: {
         //borderTopRightRadius: 30,
         //borderTopLeftRadius: 30,
@@ -2005,7 +2168,7 @@ const styles = StyleSheet.create({
         //borderBottomLeftRadius: 30,
         backgroundColor: 'white',
         //flex: 1,
-        paddingTop:40,
+        paddingTop: 40,
         padding: 30,
         //margin: 10,
         borderColor: 'black',

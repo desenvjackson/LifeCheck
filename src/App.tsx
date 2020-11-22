@@ -7,7 +7,7 @@ import cadastrodRoutes from './rotas/Principal';
 import LoginScreen from './screens/Login/index';
 import novoUsuarioScreen from './screens/Login/novousuario';
 import historico from'./screens/operacoes/telemetria';
-
+import Opcoes from './screens/operacoes/opcoes';
 
 const Stack = createStackNavigator();
 
@@ -43,6 +43,16 @@ function App() {
         }} />
         <Stack.Screen name="Historico" component={historico} options={{
           title: 'Histórico',
+          headerShown: true,
+          headerTintColor: '#000',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontFamily: "tahoma",
+            fontSize: 15,
+          },
+        }} />
+          <Stack.Screen name="Opcoes" component={Opcoes} options={{
+          title: 'Opções',
           headerShown: true,
           headerTintColor: '#000',
           headerTitleStyle: {

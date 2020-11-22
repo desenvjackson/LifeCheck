@@ -192,6 +192,15 @@ export default class OpcoesScreen extends PureComponent {
                             </TouchableOpacity>
                     </View>   
 
+                    <View  style={{ flexDirection: "row", paddingLeft: 15, margin: 1}}>   
+                    <TouchableOpacity
+                                onPress={() => this.props.navigation.navigate("Login")}
+                                style={styles.item}
+                            >                              
+                               <Text style={styles.item}>
+                                   <FontAwesome5 name="sign-out-alt" size={20} color="red"></FontAwesome5> Desconectar </Text>
+                            </TouchableOpacity>
+                    </View>   
  
 
                 </View>
