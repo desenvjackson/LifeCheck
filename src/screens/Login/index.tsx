@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { PureComponent } from 'react';
 import { View, ViewStyle, Alert, Image, TextInput, ActivityIndicator, TouchableOpacity, Text, ScrollView, StatusBar, Platform } from 'react-native';
 import { NavigationScreenProp } from 'react-navigation';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -20,33 +20,7 @@ const leftOculto = '210%';
 const left = '130%';
 const botao = '38%';
 
-interface Props {
-    navigation: NavigationScreenProp<any, any>;
-}
-
-interface State {
-    loading: any;
-    usuario: string;
-    senha: string;
-    error: string;
-    login: string;
-    mSenha: boolean;
-}
-
-
-
-
-// Tela em que o login é realizado.
-// A tela exibe os campos de usuário e senha, e o retono
-// é um token que será armazenado em memória local no aparelho
-// para que todas as outras telas subsequentes utilizem o esquema de segurança.
-//
-// Para mais informações, seguem links sobre o JWT:
-//
-// https://jwt.io/
-// https://medium.com/tableless/entendendo-tokens-jwt-json-web-token-413c6d1397f6
-// https://www.devmedia.com.br/como-o-jwt-funciona/40265
-export default class LoginScreen extends React.Component<Props, State> {
+export default class LoginScreen extends PureComponent {
 
     private inputs = [];
 
@@ -54,24 +28,42 @@ export default class LoginScreen extends React.Component<Props, State> {
         headerShown: false
     }
 
-    constructor(props: Props) {
-        super(props);
 
-        // Cria o state do componente
-        this.state = {
-            loading: true,
-            usuario: "",
-            senha: "",
-            error: '',
-            login: "",
-            mSenha: true,
-        }
+
+    // Cria o state do componente
+    state = {
+        loading: true,
+        usuario: "",
+        senha: "",
+        error: '',
+        login: "",
+        mSenha: true,
+        avatar: null,
+        nome: null
     }
+
 
     focusNextField = (id: string) => {
         this.inputs[id].focus();
     };
     componentDidMount = async () => {
+        let avatar = await AsyncStorage.getItem("avatar")
+        if (avatar != null) {
+            this.setState({
+                avatar: avatar
+            })
+        }
+
+        let nome = await AsyncStorage.getItem("nome")
+        nome = nome.replace(/[\\"]/g, '')
+
+        if (nome != null) {
+            this.setState({
+                nome: nome
+            })
+        }
+        console.log('avatar' + this.state.nome)
+
         var loginAuto = await AsyncStorage.getItem("loginAuto")
 
         if (loginAuto == 'true') {
@@ -129,7 +121,7 @@ export default class LoginScreen extends React.Component<Props, State> {
                     await AsyncStorage.setItem("senha", this.state.senha);
                     if (token["dados"][0]["avatar"] != null) {
                         await AsyncStorage.setItem("avatar", token["dados"][0]["avatar"])
-                    }else{
+                    } else {
                         await AsyncStorage.setItem("avatar", "")
                     }
                     this.props.navigation.navigate("Scan");
@@ -150,7 +142,7 @@ export default class LoginScreen extends React.Component<Props, State> {
             //resetando os campos caso o usuario volte para tela login.
             this.setState({
                 senha: '',
-                mSenha: true
+                mSenha: true,
             })
         }
 
@@ -194,6 +186,30 @@ export default class LoginScreen extends React.Component<Props, State> {
                             resizeMode="contain"
                         />
                     </View>
+                    <View style={{alignItems:'center', paddingBottom: 20 }}>
+
+                        {this.state.avatar ?
+                            <Image
+                                source={{ uri: this.state.avatar }}
+                                style={{
+                                    width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                }}
+                            />
+                            :
+                            <Image
+                                source={require('../../assets/user.png')}
+                                style={{
+                                    width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                }} />
+                        }
+
+                        <Text style={{
+                            fontSize: 14,
+                            color: 'gray',
+                            paddingTop:2
+                        }}>{this.state.nome}</Text>
+
+                    </View>
 
                     <View style={{
 
@@ -206,6 +222,8 @@ export default class LoginScreen extends React.Component<Props, State> {
                         alignItems: 'center',
                         marginBottom: 10
                     }}>
+
+
 
                         <FontAwesome5 name={"envelope"} size={20} color={Variables.colors.black} />
                         <TextInput
@@ -298,14 +316,30 @@ export default class LoginScreen extends React.Component<Props, State> {
                     </View>
 
 
-                    <View style={{ alignItems: 'center' }}  >
+                    <View>
 
                         {this.state.loading &&
                             <TouchableOpacity
                                 onPress={this.login}
-                                style={{ alignItems: 'center', marginTop: 50, marginBottom: 20, width: 80 }}    >
-                                <FontAwesome5 name="power-off" size={50} color={Variables.colors.black}></FontAwesome5>
-                                <Text style={{ fontSize: 12 }} >Conecte-se </Text>
+                                style={{
+                                    width: '97%',
+                                    height: 40,
+                                    backgroundColor: "#007bff",
+                                    borderBottomWidth: 1,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    marginBottom: 9,
+                                    flexDirection: "row",
+                                    borderColor: "#007bff",
+                                    //borderRadius: 0,
+                                    borderTopLeftRadius: 5,
+                                    borderTopRightRadius: 5,
+                                    borderBottomLeftRadius: 5,
+                                    borderBottomRightRadius: 5,
+                                    padding: 10
+                                }}>
+                                <FontAwesome5 name="power-off" size={20} color={Variables.colors.white}></FontAwesome5>
+                                <Text style={{ fontSize: 12, color: Variables.colors.white }} > Conecte-se </Text>
                             </TouchableOpacity>
                         }
                     </View>
@@ -339,8 +373,8 @@ export const loginStyles = {
     },
     header: {
         alignItems: "center",
-        marginBottom: 80,
-        marginTop: 90
+        marginBottom: 40,
+        marginTop: 70
 
     } as ViewStyle,
     logo: {

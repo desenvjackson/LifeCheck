@@ -36,6 +36,14 @@ import AndroidWhitelist from 'react-native-android-whitelist';
 import BackgroundJob from 'react-native-background-actions';
 import Styles, { Variables } from "../../styles";
 import { RNCamera } from 'react-native-camera';
+import ImagePicker from 'react-native-image-picker';
+
+
+const options = {
+    title: 'Choose an Image',
+    base64: true,
+    fileSize: true,
+};
 
 
 
@@ -108,6 +116,8 @@ export default class HomeScreen extends PureComponent {
         indicatorFoto: false,
         ativarMedicaoSegundoPlano: false,
         switchValueAutoMedicao: false,
+        avatarSource: '',
+        carregafoto: true
     };
     ativarLoginAuto = async () => {
         await this.setState({
@@ -120,16 +130,62 @@ export default class HomeScreen extends PureComponent {
     desativarLoginAuto = async () => {
         await this.setState({
             stateLogin: true,
-            login: 'false'
+            login: 'false',
+            carregafoto: true
+
         })
 
         await AsyncStorage.setItem("loginAuto", this.state.login);
 
     }
 
+    buscaGaleria = async () => {
+        await ImagePicker.launchImageLibrary(options, (response) => {
+            let base64Value = response.data;
+            this.salvarfoto(base64Value)
+            console.log('data : ' + response.data)
+
+        });
+
+    }
+
+    salvarfoto = async (base64Value) => {
+        await console.log(" ")
+        await console.log(" ")
+        await console.log(" ")
+
+        await this.setState({
+            avatarSource: base64Value
+        })
+
+        console.log(this.state.avatarSource)
+
+        await this.uploadS3Galeria()
+        console.log("Mlk  Pika...")
+    }
+
+    selecionarFotoouGaleria = async () => {
+
+        Alert.alert(
+            'Selecione',
+            '',
+            [
+                {
+                    text: 'Galeria',
+                    onPress: () => { this.buscaGaleria() }
+                },
+                {
+                    text: 'Tirar foto',
+                    onPress: () => { this.mudarFoto() },
+                },
+
+            ],
+            { cancelable: false },
+        );
+
+    }
     ativarMedicaoSegundoPlano = async () => {
 
-      
         Alert.alert(
             'Localização',
             '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
@@ -231,7 +287,7 @@ export default class HomeScreen extends PureComponent {
             color: '#000080',
             linkingURI: 'exampleScheme://chat/jane',
             parameters: {
-                  delay:  1200000,
+                delay: 1200000,
                 //delay:   300000,
                 //delay:    60000,
             },
@@ -320,9 +376,9 @@ export default class HomeScreen extends PureComponent {
                     title: 'Permissão para usar a localização',
                     //message: 'O aplicativo precisa de permissão para utilizar a sua localização',
                     message: '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
-                    'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
-                    'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
-                    'Deseja ativar ?',
+                        'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
+                        'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
+                        'Deseja ativar ?',
                     buttonNegative: 'Cancelar',
                     buttonPositive: 'Sim',
                 });
@@ -350,11 +406,11 @@ export default class HomeScreen extends PureComponent {
 
     requestBackgroundLocation = async () => {
 
-        const locationResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION); 
+        const locationResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
         const backgroundResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
 
-        console.log ( "requestBackgroundLocation  0000000000 " + backgroundResult  )
-        
+        console.log("requestBackgroundLocation  0000000000 " + backgroundResult)
+
         try {
             let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
                 {
@@ -369,10 +425,11 @@ export default class HomeScreen extends PureComponent {
                 console.log("PermissionsAndroid.RESULTS.GRANTED [ requestBackgroundLocation ] = NOT PERMISSION");
             }
 
-            console.log ( "requestBackgroundLocation  #### " + granted)
+            console.log("requestBackgroundLocation  #### " + granted)
 
         } catch (error) {
-            console.log(error);        }
+            console.log(error);
+        }
 
 
         LocationServicesDialogBox.checkLocationServicesIsEnabled({
@@ -386,7 +443,7 @@ export default class HomeScreen extends PureComponent {
         }).then(() => {
             // locationTracking(dispatch, getState, geolocationSettings)
         })
- 
+
     }
 
     permissionsFotos = async () => {
@@ -882,14 +939,14 @@ export default class HomeScreen extends PureComponent {
     }
 
     toggleSwitchAutoMedicao = async (value) => {
-        console.log ("toggleSwitchAutoMedicao " + value)
+        console.log("toggleSwitchAutoMedicao " + value)
         this.setState({ switchValueAutoMedicao: value })
-        if (value){
-            await AsyncStorage.setItem("automedicao",'true' )
-        }else {
-            await AsyncStorage.setItem("automedicao",'false' )
-        }  
-      
+        if (value) {
+            await AsyncStorage.setItem("automedicao", 'true')
+        } else {
+            await AsyncStorage.setItem("automedicao", 'false')
+        }
+
     }
 
     novaMedicao = async (device, comando) => {
@@ -963,9 +1020,6 @@ export default class HomeScreen extends PureComponent {
             //await this.processBackgroundMeasurement()
         }
     }
-
-
-
     sendDataCloud = async (frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any) => {
 
         let id_patient = await AsyncStorage.getItem('id_patient')
@@ -999,6 +1053,7 @@ export default class HomeScreen extends PureComponent {
     //foto
 
     POST = async () => {
+        console.log(4)
         let id = await AsyncStorage.getItem('id_patient')
         try {
             const data = {
@@ -1008,30 +1063,83 @@ export default class HomeScreen extends PureComponent {
             var { data: token } = await api.post("login/atualizaPerfil", "data=" + JSON.stringify(data));
             //Passando o status da consulta, em caso de SUCESSO ou ERRO
             console.log(data)
-
+            console.log(5)
             if (token["status"] === 'sucesso') {
                 console.log(token)
-
-                Alert.alert('Atualizado com Sucesso', '')
+                console.log(6)
+                //Alert.alert('Atualizado com Sucesso', '')
                 this.resetar()
                 await AsyncStorage.setItem("avatar", this.state.avatar)
                 this.setState({
                     textoCamera: '',
                     salvandoFoto: false,
                     modalFoto: false,
+                    carregafoto: true
                 })
+                console.log(7)
             } else {
                 Alert.alert('Erro ao atualizar a foto', 'porfavor tente novamente.')
-
+                this.setState({
+                    textoCamera: '',
+                    salvandoFoto: false,
+                    modalFoto: false,
+                    carregafoto: true
+                })
             }
         } catch (err) {
             console.warn(err);
+            this.setState({
+                textoCamera: '',
+                salvandoFoto: false,
+                modalFoto: false,
+                carregafoto: true
+            })
+        }
+
+    }
+    uploadS3Galeria = async () => {
+        await this.setState({
+            carregafoto: false
+        })
+        var linkfoto = this.state.avatarSource
+        try {
+            await fetch('https://rnyapi.com.br/api/aws_ic/upload.php/',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                    },
+
+                    body: "linkfoto=" + linkfoto,
+
+                }).then((response) => response.json())
+                .then((responseJson) => {
+                    console.log(retorno)
+                    // Atribundo valor de retorno da consulta JSON para uma GLOBAL
+                    var retorno = responseJson["retorno"].toString()
+                    console.log("retorno :  " + retorno)
+                    this.setState({
+                        avatar: retorno,
+                    })
+                    console.log(2)
+                    this.POST();
+                    console.log(3)
+                });
+        } catch (err) {
+            await this.setState({
+                carregafoto: true
+            })
+            console.warn(err);
+            alert(err)
         }
 
     }
 
 
     uploadS3 = async () => {
+        await this.setState({
+            carregafoto: false
+        })
         var linkfoto = this.state.foto.base64
         try {
             await fetch('https://rnyapi.com.br/api/aws_ic/upload.php/',
@@ -1055,9 +1163,13 @@ export default class HomeScreen extends PureComponent {
                     this.POST();
                 });
         } catch (err) {
+            await this.setState({
+                carregafoto: true
+            })
             console.warn(err);
             alert(err)
         }
+
     }
 
     mudarFoto = async () => {
@@ -1141,27 +1253,34 @@ export default class HomeScreen extends PureComponent {
                 >
                     <View style={styles.cardBorderPersonal}>
                         <View style={styles.avatarView}>
-                            <TouchableOpacity onPress={() => this.mudarFoto()} style={{ paddingRight: 15, paddingLeft: 15 }}>
-                                {this.state.avatar ?
-                                    <Image
-                                        source={{ uri: this.state.avatar }}
-                                        style={{
-                                            width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
-                                        }}
-                                    />
-                                    :
-                                    <Image
-                                        source={require('../../assets/user.png')}
-                                        style={{
-                                            width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
-                                        }} />
-                                }
-                            </TouchableOpacity>
+                            {this.state.carregafoto &&
+                                <TouchableOpacity onPress={() => this.selecionarFotoouGaleria()} style={{ paddingRight: 15, paddingLeft: 15 }}>
+
+                                    {this.state.avatar ?
+                                        <Image
+                                            source={{ uri: this.state.avatar }}
+                                            style={{
+                                                width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                            }}
+                                        />
+                                        :
+                                        <Image
+                                            source={require('../../assets/user.png')}
+                                            style={{
+                                                width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                            }} />
+                                    }
+                                </TouchableOpacity>
+                            }
+                            {!this.state.carregafoto &&
+                                <Text><ActivityIndicator size={"small"} color="black" style={{ marginTop: 10 }} /> carregando ... </Text>
+
+                            }
+
                             <View>
                                 <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
                                 <Text style={styles.titleTextTituloID} > Último ID conectado: {"\n"} {this.state.deviceID}   </Text>
                             </View>
-
                         </View>
                         {/*
                         <View style={{ paddingLeft: 120, paddingTop: 3 }}  >
@@ -1337,12 +1456,12 @@ export default class HomeScreen extends PureComponent {
                         */}
 
                         <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
-                        <View style={styles.cardBorderMenuAuto}>
+                            <View style={styles.cardBorderMenuAuto}>
                                 <Text style={styles.textTextDescricaoAuto}>
                                     {this.state.switchValueAutoMedicao ? 'Auto medição - Ativado' : 'Auto medição - Desativado'}
-                                    </Text>
+                                </Text>
                                 <Switch
-                                    style={{ 
+                                    style={{
                                         paddingLeft: 1
                                     }}
                                     onValueChange={this.ativarMedicaoSegundoPlano}
@@ -1441,7 +1560,7 @@ export default class HomeScreen extends PureComponent {
                             </>
                         }
 
-                        <TouchableOpacity style={{ alignItems: "flex-end", alignContent: "flex-end", margin: 10, paddingTop: 10, paddingLeft: 40 }}
+                        <TouchableOpacity style={{ alignItems: "flex-end", alignSelf: 'center', margin: 10, paddingTop: 10 }}
                             onPress={this.fechaModal} >
                             <FontAwesome5 name='sign-out-alt' color='navy' size={17} > Sair </FontAwesome5>
                         </TouchableOpacity>
@@ -1812,7 +1931,7 @@ export default class HomeScreen extends PureComponent {
                                                     flexDirection: 'row',
                                                     alignItems: 'center',
                                                     marginTop: 10,
-                                                    backgroundColor: Variables.colors.gray,
+                                                    backgroundColor: Variables.colors.black,
                                                     justifyContent: 'center',
                                                 }}>
                                                     <Text style={{ color: Variables.colors.white, fontSize: 20, paddingRight: 5 }}>
@@ -1902,7 +2021,7 @@ export default class HomeScreen extends PureComponent {
                                                             flexDirection: 'row',
                                                             alignItems: 'center',
                                                             marginTop: 10,
-                                                            backgroundColor: Variables.colors.gray,
+                                                            backgroundColor: Variables.colors.black,
                                                             justifyContent: 'center',
                                                         }}>
                                                             <Text style={{ color: Variables.colors.white, fontSize: 20, paddingRight: 5 }}>
@@ -2159,7 +2278,7 @@ const styles = StyleSheet.create({
         textAlign: "center",
         textAlignVertical: "center",
 
-        flexDirection: "row" 
+        flexDirection: "row"
     },
     cardBorderPersonal: {
         //borderTopRightRadius: 30,

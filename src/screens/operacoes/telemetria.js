@@ -52,10 +52,9 @@ export default class telemetria extends PureComponent {
 
       var { data: token } = await api.post("monitoring/listMonitoringForFirm", "data=" + JSON.stringify(data))
 
-
       if (token["status"] === 'sucesso') {
 
-
+        console.log(token)
         this.setState({
           dataSource: token["dados"],
         });
@@ -106,7 +105,9 @@ export default class telemetria extends PureComponent {
   render() {
     return (
 
-      <ScrollView style={{ width: "100%" }}  >
+      <ScrollView style={{
+        width: "100%", backgroundColor: Variables.colors.grayDark, flex: 1
+      }}  >
         {this.state.carregarDataSoucer &&
           <View style={{ alignItems: 'center', marginTop: '50%' }}>
             <ActivityIndicator size={"small"} color={Variables.colors.black} style={{ padding: 40 }} />
@@ -124,35 +125,36 @@ export default class telemetria extends PureComponent {
                   < TouchableOpacity
                     onPress={() => this.abrirModal(op.frequenciacardiaca, op.oxigenio, op.hipertensao, op.hipotensao, op.temperatura, op.nome, op.sobrenome, op.date_monitor)}
                     style={{
-                      width: '100%',
-                      height: 80,
+                      width: '97%',
+                      height: 120,
                       backgroundColor: "white",
                       borderBottomWidth: 1,
                       // justifyContent: 'center',
                       alignItems: 'center',
-                      marginBottom: 1,
+                      marginBottom: 9,
+                      marginLeft: 5,
                       flexDirection: "row",
                       borderColor: Variables.colors.grayLight,
-                      //  borderRadius: 0,
-                      //borderTopLeftRadius: 5,
-                      // borderTopRightRadius: 5,
-                      // borderBottomLeftRadius: 5,
-                      //borderBottomRightRadius: 5,
+                      //borderRadius: 0,
+                      borderTopLeftRadius: 5,
+                      borderTopRightRadius: 5,
+                      borderBottomLeftRadius: 5,
+                      borderBottomRightRadius: 5,
                     }}>
                     <View style={{ paddingBottom: 10, paddingRight: 15, paddingLeft: 15 }}>
-                      {op.temperatura < 37 && op.oxigenio > 89 && op.frequenciacardiaca < 120 && op.hipertensao < 140 && op.hipotensao < 90 ?
-                        <FontAwesome5 name={"smile"} size={30} color="green" />
-                        :
-                        <FontAwesome5 name={"meh"} size={30} color="#D16406" />
-                      }
+                        <Image
+                        source={require('../../assets/medicoes.png')}
+                        style={{
+                          width: 90, height: 90,marginLeft:4
+                        }} />
                     </View>
                     <View style={{ paddingBottom: 15 }}>
                       {op.temperatura < 37 && op.oxigenio > 89 && op.frequenciacardiaca < 120 && op.hipertensao < 140 && op.hipotensao < 90 ?
-                        <Text style={{ fontSize: 20, color: "green", opacity: 0.6, paddingTop: 5 }} >Bom</Text>
+                        <Text style={{ fontSize: 24, color: "green", opacity: 0.6, paddingTop: 5 }} >BOM</Text>
                         :
-                        <Text style={{ fontSize: 20, color: "#D16406", opacity: 0.6, paddingTop: 5 }} >Atenção</Text>
+                        <Text style={{ fontSize: 24, color: "#D16406", opacity: 0.6, paddingTop: 5 }} >ATENÇÃO</Text>
                       }
-                      <Text style={{ fontSize: 12, color: "gray", opacity: 0.6, paddingTop: 5 }}>{op.date_monitor} </Text>
+                      <Text style={{ fontSize: 12, color: "gray", opacity: 0.6, paddingTop: 5 }}>Dia: {op.data}. Horário: {op.hora}h</Text>
                     </View>
                   </TouchableOpacity>
                 </>

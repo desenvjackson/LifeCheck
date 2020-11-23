@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { View, Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer,CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import cadastrodRoutes from './rotas/Principal';
@@ -23,6 +23,7 @@ function App() {
         }} />
 
         <Stack.Screen
+        
           name="Login"
           component={LoginScreen}
           options={{
