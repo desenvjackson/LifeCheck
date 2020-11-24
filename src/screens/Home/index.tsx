@@ -685,7 +685,7 @@ export default class HomeScreen extends PureComponent {
 
             // Pegando nome do usuário logado e o último device conectado
             let nomeUsuario = await AsyncStorage.getItem("nome")
-            nomeUsuario = nomeUsuario.replace("\"", "").replace(" \"", "").replace(" \"  \" ", "")
+            nomeUsuario = nomeUsuario.replace(/[\\"]/g, '')
             let deviceID = await AsyncStorage.getItem("asyncdeviceID")
             this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
 
