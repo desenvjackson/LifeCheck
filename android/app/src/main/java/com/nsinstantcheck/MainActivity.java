@@ -1,4 +1,4 @@
-package com.instantcheck;
+package com.nsinstantcheck;
 
 import com.facebook.react.ReactActivity;
 

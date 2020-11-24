@@ -1,4 +1,4 @@
-package com.instantcheck;
+package com.nsinstantcheck;
 
 import android.app.Application;
 import android.content.Context;
