@@ -168,7 +168,7 @@ export default class LoginScreen extends PureComponent {
 
     render() {
         return (
-            <Screen
+            <View
                 {...this.props}
                 style={{
                     backgroundColor: Variables.colors.primary,
@@ -357,7 +357,7 @@ export default class LoginScreen extends PureComponent {
                     />
                 </ScrollView>
 
-            </Screen>
+            </View>
 
         );
     }

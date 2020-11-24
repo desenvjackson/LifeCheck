@@ -184,6 +184,7 @@ export default class HomeScreen extends PureComponent {
         );
 
     }
+
     ativarMedicaoSegundoPlano = async () => {
 
         Alert.alert(
@@ -202,7 +203,7 @@ export default class HomeScreen extends PureComponent {
                     onPress: () => { this.toggleSwitchAutoMedicao(false) },
                 },
                 {
-                    text: 'Permitir o tempo todo',
+                    text: 'Sim',
                     onPress: () => { this.processBackgroundMeasurement() },
                 },
             ],
@@ -287,9 +288,9 @@ export default class HomeScreen extends PureComponent {
             color: '#000080',
             linkingURI: 'exampleScheme://chat/jane',
             parameters: {
-                delay: 1200000,
+                // delay: 1200000,
                 //delay:   300000,
-                //delay:    60000,
+                delay:     180000,
             },
         }
 
@@ -663,6 +664,7 @@ export default class HomeScreen extends PureComponent {
     deviceconnect = async (device, comando) => {
 
         await this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy', loading: true, dados: [], modal: false })
+
         // Limpando campos da última consulta.
         await this.setState({ frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '' })
         if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
@@ -675,7 +677,6 @@ export default class HomeScreen extends PureComponent {
             device = await manager.connectToDevice(device.id, { autoConnect: true })
             console.log("connectToDevice >>> ")
             this.setState({ deviceDados: device })
-
 
             //Salvando o id device no registro do usuário
 
@@ -737,9 +738,6 @@ export default class HomeScreen extends PureComponent {
 
 
     measureTempNow = async (device) => {
-        //const services = await device.services();
-        this.setState({ medeTemperatura: true })
-
         if (!device) {
             return
         } else {
@@ -760,24 +758,19 @@ export default class HomeScreen extends PureComponent {
                     });
 
                 const timeout = setTimeout(() => {
-                    if (this.state.interval) {
                         this.measureTempStop(device)
-                    }
-                }, 5000);
+                }, 15000);
 
                 return () => clearTimeout(timeout);
 
             } catch (err) {
                 console.log(err)
             }
-
         }
     }
 
     measureTempStop = async (device) => {
-        //const services = await device.services();
         if (!device) {
-            // this.setState({ info4: "Dispositivo desconectado" })
             return
         } else {
             try {
@@ -799,8 +792,6 @@ export default class HomeScreen extends PureComponent {
             } catch (err) {
                 console.log(err)
             }
-
-            this.setState({ medeTemperatura: false })
         }
     }
 
@@ -851,16 +842,27 @@ export default class HomeScreen extends PureComponent {
                     await this.sendDataCloud(hex6, hex7, hex8, hex9)
 
                 } else if (hex2 === 5 && hex[6] > 0 && hex[4] === 134) {
-                    await this.setState({ temperatura: hex[6] + '.' + hex[7] })
+                    let temperatura = hex6 + '.' + hex7
+                    let valorTemperaturaSendDataCloud = AsyncStorage.setItem('valorTemperaturaSendDataCloud', temperatura.toString())
                 }
                 // Vai para página de medições    
                 // this.props.navigation.navigate("Medições");
+                //  console.log ( "onUARTSubscriptionUpdate_ALL " , characteristics.value)
+                 //  console.log ( "hex2  " , hex2 )
+                 // console.log ( hex2 + ' / ' + hex[6]  + ' / ' +  hex[4])
+                 // console.log ( " STATE TEMPERATURA " + this.state.temperatura)      
             }
+
         } catch (err) {
             console.log(JSON.stringify(err))
         }
     };
 
+    carregaValorTemperatura = async (vlrTemp) =>{
+        console.log( "carregaValorTemperatura  ################################## " +  vlrTemp)
+        this.setState({ temperatura: vlrTemp })
+        console.log( "carregaValorTemperatura " +  this.state.temperatura)
+    }
 
     desconectar = async (device: any) => {
         if (device) {
@@ -975,11 +977,7 @@ export default class HomeScreen extends PureComponent {
                 });
 
             const timeout = setTimeout(() => {
-                this.setState({ interval: true })
-
-                if (this.state.interval) {
-                    this.measureAllStop(this.state.deviceDados)
-                }
+                    this.measureAllStop(device)
             }, 40000);
 
             return () => clearTimeout(timeout)
@@ -990,6 +988,7 @@ export default class HomeScreen extends PureComponent {
     }
 
     measureAllStop = async (device) => {
+        console.log(" measureAllStop ")
         //const services = await device.services();
         if (!device) {
             console.log("Dispositivo desconectado")
@@ -1017,19 +1016,21 @@ export default class HomeScreen extends PureComponent {
             }
             this.setState({ loadingMedicao: false })
             await this.desconectar(device)
-            //await this.processBackgroundMeasurement()
         }
     }
+
     sendDataCloud = async (frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any) => {
 
         let id_patient = await AsyncStorage.getItem('id_patient')
+        let valorTemperaturaSendDataCloud = await AsyncStorage.getItem('valorTemperaturaSendDataCloud')
+
         try {
             const MonitoringHistoryModel = {
                 frequenciaCardiaca: frequenciaCardiaca,
                 oxigenio: oxigenio,
                 hiperTensao: hiperTensao,
                 hipoTensao: hipoTensao,
-                temperatura: this.state.temperatura,
+                temperatura: valorTemperaturaSendDataCloud,
                 id_patient: id_patient,
                 id_firm: 1,
                 id_monitoringstatus: 1,
