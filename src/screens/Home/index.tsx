@@ -1458,7 +1458,7 @@ export default class HomeScreen extends PureComponent {
                         <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
                             <View style={styles.cardBorderMenuAuto}>
                                 <Text style={styles.textTextDescricaoAuto}>
-                                    {this.state.switchValueAutoMedicao ? 'Auto medição - Ativado' : 'Auto medição - Desativado'}
+                                    {this.state.switchValueAutoMedicao ? 'Medição Automática- Ativado' : 'Medição Automática- Desativado'}
                                 </Text>
                                 <Switch
                                     style={{
@@ -2255,7 +2255,7 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginLeft: 10,
 
-        width: "70%",
+        width: "78%",
         height: 45,
 
         borderColor: "navy",
