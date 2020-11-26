@@ -844,6 +844,7 @@ export default class HomeScreen extends PureComponent {
                 } else if (hex2 === 5 && hex[6] > 0 && hex[4] === 134) {
                     let temperatura = hex6 + '.' + hex7
                     let valorTemperaturaSendDataCloud = AsyncStorage.setItem('valorTemperaturaSendDataCloud', temperatura.toString())
+                    await this.setState({ temperatura: temperatura })
                 }
                 // Vai para página de medições    
                 // this.props.navigation.navigate("Medições");
