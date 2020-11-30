@@ -316,13 +316,13 @@ export default class LoginScreen extends PureComponent {
                     </View>
 
 
-                    <View>
+                    <View style={{ justifyContent: 'center', alignItems: 'center'}}>
 
                         {this.state.loading &&
                             <TouchableOpacity
                                 onPress={this.login}
                                 style={{
-                                    width: '97%',
+                                    width: '60%',
                                     height: 40,
                                     backgroundColor: "#007bff",
                                     borderBottomWidth: 1,
@@ -336,10 +336,11 @@ export default class LoginScreen extends PureComponent {
                                     borderTopRightRadius: 5,
                                     borderBottomLeftRadius: 5,
                                     borderBottomRightRadius: 5,
-                                    padding: 10
+                                    padding: 10,
+                                    marginTop: 15,
                                 }}>
                                 <FontAwesome5 name="power-off" size={20} color={Variables.colors.white}></FontAwesome5>
-                                <Text style={{ fontSize: 12, color: Variables.colors.white }} > Conecte-se </Text>
+                                <Text style={{ fontSize: 18, color: Variables.colors.white }} > Conecte-se </Text>
                             </TouchableOpacity>
                         }
                     </View>
