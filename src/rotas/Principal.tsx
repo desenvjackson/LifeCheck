@@ -69,7 +69,7 @@ export default function cadastrodRoutes() {
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="1313" style={{ paddingBottom: 30 }} size={25} color={Variables.colors.black}></FontAwesome5>
+                        <FontAwesome5 name="info-circle" style={{ paddingBottom: 30 }} size={30} color="navy"></FontAwesome5>
                     ),
                     unmountOnBlur: true
                 }}

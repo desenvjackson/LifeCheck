@@ -16,7 +16,9 @@ import {
     SectionList, AppState,
     Switch
 } from 'react-native';
-import { Card, Title, Paragraph, TextInput, Checkbox, RadioButton, ToggleButton } from 'react-native-paper';
+
+import { Card, Title, Paragraph, TextInput, Checkbox, RadioButton, ToggleButton, IconButton, Avatar } from 'react-native-paper';
+
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 const window = Dimensions.get('window');
 import LocationServicesDialogBox from "react-native-android-location-services-dialog-box";
@@ -117,7 +119,8 @@ export default class HomeScreen extends PureComponent {
         ativarMedicaoSegundoPlano: false,
         switchValueAutoMedicao: false,
         avatarSource: '',
-        carregafoto: true
+        carregafoto: true,
+        loadingMedicaoVital: false
     };
     ativarLoginAuto = async () => {
         await this.setState({
@@ -150,18 +153,11 @@ export default class HomeScreen extends PureComponent {
     }
 
     salvarfoto = async (base64Value) => {
-        await console.log(" ")
-        await console.log(" ")
-        await console.log(" ")
-
         await this.setState({
             avatarSource: base64Value
         })
 
-        console.log(this.state.avatarSource)
-
         await this.uploadS3Galeria()
-        console.log("Mlk  Pika...")
     }
 
     selecionarFotoouGaleria = async () => {
@@ -188,19 +184,17 @@ export default class HomeScreen extends PureComponent {
     ativarMedicaoSegundoPlano = async () => {
 
         Alert.alert(
-            'Localização',
-            '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
-            'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
-            'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
-            'Deseja ativar a medição em segundo plano ?',
+            'INSTANT CHECK',
+            '\nO monitoramento automático coleta de forma autônoma seus dados vitais.\n\n' +
+            'Deseja ativar o monitoramento automático em segundo plano ?',
             [
                 {
-                    text: 'Desativar medição',
+                    text: 'Desativar',
                     onPress: () => { this.stopBackGround() }
                 },
                 {
                     text: 'Não',
-                    onPress: () => { this.toggleSwitchAutoMedicao(false) },
+                    onPress: () => { this.stopBackGround() },
                 },
                 {
                     text: 'Sim',
@@ -216,7 +210,8 @@ export default class HomeScreen extends PureComponent {
 
         console.log(" connectBackgroundMeasurement ")
         let id_patient = await AsyncStorage.getItem('id_patient')
-        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
+        let asyncdeviceID = await AsyncStorage.getItem("id_device")
+        asyncdeviceID = asyncdeviceID.replace(/[\\"]/g, '')
 
         manager.stopDeviceScan()
 
@@ -254,7 +249,8 @@ export default class HomeScreen extends PureComponent {
                             manager.stopDeviceScan()
                             this.deviceconnect(device, true)
                         }
-                        console.log("loopando")
+                        console.log("loopando", asyncdeviceID)
+                        console.log(device.id)
                     });
                 } else {
                     console.log("CONECTADO !!!! O MENINO ")
@@ -288,9 +284,9 @@ export default class HomeScreen extends PureComponent {
             color: '#000080',
             linkingURI: 'exampleScheme://chat/jane',
             parameters: {
-                // delay: 1200000,
-                //delay:   300000,
-                delay:     180000,
+                delay: 1200000,
+                //delay:  300000,
+                //delay:  180000,
             },
         }
 
@@ -307,7 +303,7 @@ export default class HomeScreen extends PureComponent {
             }
         } else {
             console.log('Stop background service');
-            await BackgroundJob.stop();
+            // await BackgroundJob.stop();
         }
 
     }
@@ -476,10 +472,11 @@ export default class HomeScreen extends PureComponent {
 
         AppState.addEventListener('change', state => {
             if (state === 'active') {
-                this.stopBackGround()
                 console.log("active");
             } else if (state === 'background') {
-                console.log("background")
+                //this.processBackgroundMeasurement()
+                //this.toggleSwitchAutoMedicao(true)
+                console.log("background");
             } else if (state === 'inactive') {
                 console.log("inactive");
             }
@@ -510,8 +507,9 @@ export default class HomeScreen extends PureComponent {
         let nomeUsuario = await AsyncStorage.getItem("nome")
         nomeUsuario = nomeUsuario.replace(/[\\"]/g, '')
 
-        let deviceID = await AsyncStorage.getItem("asyncdeviceID")
-        this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
+        let id_device = await AsyncStorage.getItem("id_device")
+        id_device = id_device.replace(/[\\"]/g, '')
+        this.setState({ nomeUsuario: nomeUsuario, deviceID: id_device })
 
         //carregando foto
         let avatar = await AsyncStorage.getItem("avatar")
@@ -520,7 +518,7 @@ export default class HomeScreen extends PureComponent {
                 avatar: avatar
             })
         }
-        console.log('avatar' + this.state.avatar)
+
 
         // Pegando ultimo status da Auto medicão
         let automedicao = await AsyncStorage.getItem("automedicao")
@@ -575,7 +573,7 @@ export default class HomeScreen extends PureComponent {
         //console.log('idPatient - ONESIGNAL: ', id_patient );
 
         // recupera id do relogio/device
-        let asyncdeviceID = await AsyncStorage.getItem('asyncdeviceID')
+        let asyncdeviceID = await AsyncStorage.getItem("id_device")
 
         //API para atualizar o codigo do ONESIGNAL do paciente
         try {
@@ -601,6 +599,9 @@ export default class HomeScreen extends PureComponent {
     scanAndConnect = async () => {
 
         try {
+
+            this.setState({ loadingMedicaoVital: true })
+
             // Parando o processo em segundo plano
             await this.stopBackGround()
 
@@ -614,12 +615,19 @@ export default class HomeScreen extends PureComponent {
                 }
             }, true);
 
+            // Limpando campos da última consulta.
+            await this.setState({ frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '' })
+
             await this.setState({
                 loading: true, scanning: true, dadosservicesMAP: new Map(), erro: false, dadosservices: [],
                 dados: [], peripherals: new Map(),
                 conectando: "Conectando ao seu INSTANT CHECK... ", corIconBluetooth: 'navy',
-                modal: true
+                modal: false
             });
+
+            let asyncdeviceID = await AsyncStorage.getItem("id_device")
+            asyncdeviceID = asyncdeviceID.replace(/[\\"]/g, '')
+
 
             var peripherals = this.state.peripherals;
             let ScanOptions = { scanMode: ScanMode.LowLatency }
@@ -633,16 +641,42 @@ export default class HomeScreen extends PureComponent {
                 if (!device.name) {
                     device.name = 'SEM NOME';
                 }
+
+                try {
+                    let ScanOptions = { scanMode: ScanMode.LowLatency }
+                    manager.startDeviceScan(null, ScanOptions, (error, device) => {
+                        if (error) {
+                            // Handle error (scanning will be stopped automatically)
+                            console.log("Error - startDeviceScan : " + error);
+                            return
+                        }
+                        if (device.id === asyncdeviceID) {
+                            // Parando scaneamento dos devices
+                            manager.stopDeviceScan()
+                            this.deviceconnect(device, false)
+
+                        }
+                        console.log("loopando", asyncdeviceID)
+                        console.log(device.id)
+                    });
+
+                } catch (err) {
+                    console.log("compareID" + err);
+                    const logTesteCID = { device_id: asyncdeviceID, description: err }
+                    var { data: returnData } = api.post("monitoring/logTeste", "data=" + JSON.stringify(logTesteCID))
+                }
+
+
                 // Quando encontrar o dispositivo encerra o processo de scan.    
                 //if (device.name === 'T1S') {
                 // manager.stopDeviceScan()
 
-                peripherals.set(device.id, device)
-                this.setState({ peripherals })
-                this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
+                //peripherals.set(device.id, device)
+                //this.setState({ peripherals })
+                //this.setState({ dadosservices: Array.from(this.state.peripherals.values()) })
                 //let lista = this.state.dadosservices.filter((index) => index.name != 'SEM NOME')
-                let lista = this.state.dadosservices.filter((index) => index.name === 'T1S')
-                this.setState({ dados: lista });
+                //let lista = this.state.dadosservices.filter((index) => index.name === 'T1S')
+                //this.setState({ dados: lista });
                 //}
 
                 console.log(device.name)
@@ -650,8 +684,26 @@ export default class HomeScreen extends PureComponent {
 
                 setTimeout(() => {
                     manager.stopDeviceScan()
-                    this.setState({ loading: false })
-                }, 2500)
+                    this.setState({ loadingMedicaoVital: false })
+                    if (!this.state.modalMedicao) {
+                        Alert.alert("Conexão falhou!",
+                            "Verifique se o relógio está ligado e/ou próximo em um raio de 3 metros.",
+                            [
+                                //{
+                                //    text: 'Ask me later',
+                                //    onPress: () => console.log('Ask me later pressed')
+                                //},
+                                {
+                                    text: 'Sair',
+                                    onPress: () => console.log('Cancel Pressed'),
+                                    style: 'cancel'
+                                },
+                                { text: 'Nova tentativa', onPress: () => this.scanAndConnect() }
+                            ],
+                            { cancelable: false }
+                        );
+                    }
+                }, 15000)
 
 
             });
@@ -665,8 +717,6 @@ export default class HomeScreen extends PureComponent {
 
         await this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy', loading: true, dados: [], modal: false })
 
-        // Limpando campos da última consulta.
-        await this.setState({ frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '' })
         if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
 
         console.log("Connecting to device #### ")
@@ -687,9 +737,6 @@ export default class HomeScreen extends PureComponent {
             // Pegando nome do usuário logado e o último device conectado
             let nomeUsuario = await AsyncStorage.getItem("nome")
             nomeUsuario = nomeUsuario.replace(/[\\"]/g, '')
-            let deviceID = await AsyncStorage.getItem("asyncdeviceID")
-            this.setState({ nomeUsuario: nomeUsuario, deviceID: deviceID })
-
 
             // Active listenning notify 
             await this.setupNotifications(device)
@@ -758,7 +805,7 @@ export default class HomeScreen extends PureComponent {
                     });
 
                 const timeout = setTimeout(() => {
-                        this.measureTempStop(device)
+                    this.measureTempStop(device)
                 }, 15000);
 
                 return () => clearTimeout(timeout);
@@ -849,9 +896,9 @@ export default class HomeScreen extends PureComponent {
                 // Vai para página de medições    
                 // this.props.navigation.navigate("Medições");
                 //  console.log ( "onUARTSubscriptionUpdate_ALL " , characteristics.value)
-                 //  console.log ( "hex2  " , hex2 )
-                 // console.log ( hex2 + ' / ' + hex[6]  + ' / ' +  hex[4])
-                 // console.log ( " STATE TEMPERATURA " + this.state.temperatura)      
+                //  console.log ( "hex2  " , hex2 )
+                // console.log ( hex2 + ' / ' + hex[6]  + ' / ' +  hex[4])
+                // console.log ( " STATE TEMPERATURA " + this.state.temperatura)      
             }
 
         } catch (err) {
@@ -859,10 +906,10 @@ export default class HomeScreen extends PureComponent {
         }
     };
 
-    carregaValorTemperatura = async (vlrTemp) =>{
-        console.log( "carregaValorTemperatura  ################################## " +  vlrTemp)
+    carregaValorTemperatura = async (vlrTemp) => {
+        console.log("carregaValorTemperatura  ################################## " + vlrTemp)
         this.setState({ temperatura: vlrTemp })
-        console.log( "carregaValorTemperatura " +  this.state.temperatura)
+        console.log("carregaValorTemperatura " + this.state.temperatura)
     }
 
     desconectar = async (device: any) => {
@@ -978,7 +1025,7 @@ export default class HomeScreen extends PureComponent {
                 });
 
             const timeout = setTimeout(() => {
-                    this.measureAllStop(device)
+                this.measureAllStop(device)
             }, 40000);
 
             return () => clearTimeout(timeout)
@@ -1020,6 +1067,50 @@ export default class HomeScreen extends PureComponent {
         }
     }
 
+    sendNotificationMeasure = async (device, codigomensagem, frequenciaCardiaca, oxigenio, hiperTensao, hipoTensao, temperatura) => {
+        try {
+            let id_patient = await AsyncStorage.getItem('id_patient')
+            let nomePaciente = await AsyncStorage.getItem('nome')
+            const logsendsOneSignal = {
+                id_patient: id_patient,
+                codigoMensagem: codigomensagem,
+                nomePaciente: nomePaciente,
+                frequenciaCardiaca: frequenciaCardiaca,
+                oxigenio: oxigenio,
+                hiperTensao: hiperTensao,
+                hipoTensao: hipoTensao,
+                temperatura: temperatura,
+            }
+            var { data: returnData } = await api.post("monitoring/sendsOneSignal", "data=" + JSON.stringify(logsendsOneSignal));
+        } catch (err) {
+            // some error handling
+            console.log("sendNotificationMeasure" + err);
+        }
+    }
+
+    sendEmailMeasure = async (frequenciaCardiaca, oxigenio, hiperTensao, hipoTensao, temperatura) => {
+        try {
+
+            let email = await AsyncStorage.getItem('email')
+            let nomePaciente = await AsyncStorage.getItem('nome')
+
+            const logsendsOneSignal = {
+                email: email,
+                nomePaciente: nomePaciente,
+                frequenciaCardiaca: frequenciaCardiaca,
+                oxigenio: oxigenio,
+                hiperTensao: hiperTensao,
+                hipoTensao: hipoTensao,
+                temperatura: temperatura,
+            }
+            var { data: returnData } = await api.post("monitoring/enviaEmailMedicoes", "data=" + JSON.stringify(logsendsOneSignal));
+        } catch (err) {
+            // some error handling
+            console.log("sendEmailMeasure" + err);
+        }
+    }
+
+
     sendDataCloud = async (frequenciaCardiaca: any, oxigenio: any, hiperTensao: any, hipoTensao: any) => {
 
         let id_patient = await AsyncStorage.getItem('id_patient')
@@ -1047,7 +1138,16 @@ export default class HomeScreen extends PureComponent {
             } else {
                 console.log('sendDataCloud', 'Dados incorretos !')
             }
-            console.log("sendDataCloud")
+
+            //Ligando a auto medição
+            await this.processBackgroundMeasurement()
+
+            //Enviando PUSH NOTIFICATION
+            await this.sendNotificationMeasure(1, 2, frequenciaCardiaca, oxigenio, hiperTensao, hipoTensao, valorTemperaturaSendDataCloud)
+
+            //Enviando email
+            await this.sendEmailMeasure(frequenciaCardiaca, oxigenio, hiperTensao, hipoTensao, valorTemperaturaSendDataCloud)
+
         } catch (err) {
             console.log(err)
         }
@@ -1247,9 +1347,11 @@ export default class HomeScreen extends PureComponent {
 
                 <View
                     style={{
-                        paddingTop: 10,
-                        backgroundColor: "white",
-                        flex: 1
+                        paddingTop: 5,
+                        backgroundColor: "#f5f5f5",
+                        flex: 1,
+                        // width: window.width,
+                        //height: window.height/3,
                     }}
 
                 >
@@ -1262,7 +1364,7 @@ export default class HomeScreen extends PureComponent {
                                         <Image
                                             source={{ uri: this.state.avatar }}
                                             style={{
-                                                width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                                width: 80, height: 80, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
                                             }}
                                         />
                                         :
@@ -1281,7 +1383,7 @@ export default class HomeScreen extends PureComponent {
 
                             <View>
                                 <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
-                                <Text style={styles.titleTextTituloID} > Último ID conectado: {"\n"} {this.state.deviceID}   </Text>
+                                <Text style={styles.titleTextTituloID} > {this.state.deviceID}   </Text>
                             </View>
                         </View>
                         {/*
@@ -1314,18 +1416,56 @@ export default class HomeScreen extends PureComponent {
                     */}
                     </View>
 
-                    <ScrollView style={{ flex: 1, paddingTop: 20 }}>
+                    <ScrollView style={{ flex: 1 }}>
 
-                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
+                        {/*
+                        <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15, marginTop: 50 }} onPress={() => this.scanAndConnect()}>
+                            <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
+                                <Card.Title
+                                    title="Medições Vitais"
+                                    subtitle="Realize sua medição agora"
+                                    left={() => <Avatar.Text size={35}
+                                        label="M"
+                                        style={{
+                                            backgroundColor: "white",
+                                            borderColor: "black",
+                                            borderWidth: 1
+                                        }}
+                                    />}
+                                    right={() => <FontAwesome5
+                                        style={{ paddingRight: 13 }}
+                                        name="stethoscope"
+                                        color="navy"
+                                        size={20}>
+                                    </FontAwesome5>}
+                                />
+                            </Card>
+                        </TouchableOpacity>
+  */}
+
+                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1, marginTop: "10%" }}>
 
                             <TouchableOpacity onPress={() => this.scanAndConnect()}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
-                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text>
-                                        <Text style={styles.textTextDescricao} >  MEDIÇÕES {"\n"} VITAIS </Text>
+
+                                        {!this.state.loadingMedicaoVital &&
+                                            <View >
+                                                <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text>
+                                                <Text style={styles.textTextDescricao} >  MEDIÇÕES {"\n"} VITAIS </Text>
+                                            </View >
+                                        }
+
+                                        {this.state.loadingMedicaoVital &&
+                                            <Text style={{ alignItems: 'center', alignContent: "center", fontSize: 15 }}>
+                                                <ActivityIndicator size={"large"} color="gray" style={{ marginTop: 10 }} /> {"\n\n"} Aguarde... </Text>
+                                        }
+
+
                                     </View>
                                 </View>
                             </TouchableOpacity>
+
 
 
                             <TouchableOpacity onPress={() => this.props.navigation.navigate("Historico")}>
@@ -1339,8 +1479,34 @@ export default class HomeScreen extends PureComponent {
 
                         </View>
 
+                        {/*
+                        <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.props.navigation.navigate("Historico")}>
+                            <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
+                                <Card.Title
+                                    title="Histórico"
+                                    subtitle="Veja suas últimas medições"
+                                    left={() => <Avatar.Text size={35}
+                                        label="H"
+                                        style={{
+                                            backgroundColor: "navy",
+                                            borderColor: "black",
+                                            borderWidth: 1
+                                        }}
+                                    />}
+                                    right={() => <FontAwesome5
+                                        style={{ paddingRight: 13 }}
+                                        name="heart"
+                                        color="navy"
+                                        size={20}>
+                                    </FontAwesome5>}
+                                />
+                            </Card>
+                        </TouchableOpacity>
+                                    */}
+
 
                         <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
+
 
                             {this.state.stateLogin &&
                                 <TouchableOpacity onPress={() => this.ativarLoginAuto()} >
@@ -1349,13 +1515,13 @@ export default class HomeScreen extends PureComponent {
                                         flex: 1,
                                         //padding: 10,
                                         //margin: 50, 
-                                        marginRight: 10,
+                                        marginRight: 20,
                                         marginBottom: 10,
-                                        //marginTop: 20,
-                                        marginLeft: 10,
+                                        marginTop: 20,
+                                        marginLeft: 30,
 
                                         width: 115,
-                                        height: 120,
+                                        height: 130,
 
                                         borderColor: "navy",
                                         borderWidth: 1,
@@ -1395,13 +1561,13 @@ export default class HomeScreen extends PureComponent {
                                         flex: 1,
                                         //padding: 10,
                                         //margin: 50, 
-                                        marginRight: 10,
+                                        marginRight: 20,
                                         marginBottom: 10,
-                                        // marginTop: 20,
-                                        marginLeft: 10,
+                                        marginTop: 20,
+                                        marginLeft: 30,
 
                                         width: 115,
-                                        height: 120,
+                                        height: 130,
 
                                         borderColor: "navy",
                                         borderWidth: 1,
@@ -1432,8 +1598,8 @@ export default class HomeScreen extends PureComponent {
                                         </View>
                                     </View>
                                 </TouchableOpacity>
-
                             }
+
 
 
                             <TouchableOpacity onPress={() => this.props.navigation.navigate("Opcoes")}>
@@ -1457,6 +1623,7 @@ export default class HomeScreen extends PureComponent {
                         </TouchableOpacity>
                         */}
 
+                        {/*
                         <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
                             <View style={styles.cardBorderMenuAuto}>
                                 <Text style={styles.textTextDescricaoAuto}>
@@ -1471,9 +1638,110 @@ export default class HomeScreen extends PureComponent {
                                 />
                             </View>
                         </TouchableOpacity>
+                        */}
 
+                        {/*
+                        <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.props.navigation.navigate("Opcoes")}>
+                            <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
+                                <Card.Title
+                                    title="Configurações"
+                                    subtitle=""
+                                    left={() => <Avatar.Text size={35}
+                                        label="G"
+                                        style={{
+                                            backgroundColor: "navy",
+                                            borderColor: "black",
+                                            borderWidth: 1
+                                        }}
+                                    />}
+                                    right={() => <FontAwesome5
+                                        style={{ paddingRight: 13 }}
+                                        name={this.state.switchValueAutoMedicao ? "user-cog" : "user-cog"}
+                                        color={this.state.switchValueAutoMedicao ? "navy" : "navy"}
+                                        size={20}>
+                                    </FontAwesome5>}
+                                />
+                            </Card>
+                        </TouchableOpacity>
+                    */}
+
+                        {/*
+                        {this.state.stateLogin &&
+                            <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.ativarLoginAuto()}>
+                                <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
+                                    <Card.Title
+                                        title="Login Automático"
+                                        subtitle={this.state.stateLogin ? "Desligado" : "Ativado"}
+                                        left={() => <Avatar.Text size={35}
+                                            label={this.state.stateLogin ? "OFF" : "L"}
+                                            style={{
+                                                backgroundColor: this.state.stateLogin ? "red" : "green",
+                                                borderColor: "black",
+                                                borderWidth: 1
+                                            }}
+                                        />}
+                                        right={() => <FontAwesome5
+                                            style={{ paddingRight: 13 }}
+                                            name={this.state.stateLogin ? "chevron-down" : "chevron-up"}
+                                            color={this.state.stateLogin ? "red" : "green"}
+                                            size={20}>
+                                        </FontAwesome5>}
+                                    />
+                                </Card>
+                            </TouchableOpacity>
+                        }
+                        {!this.state.stateLogin &&
+                            <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.desativarLoginAuto()}>
+                                <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
+                                    <Card.Title
+                                        title="Login Automático"
+                                        subtitle={this.state.stateLogin ? "Desligado" : "Ativado"}
+                                        left={() => <Avatar.Text size={35}
+                                            label={this.state.stateLogin ? "OFF" : "L"}
+                                            style={{
+                                                backgroundColor: this.state.stateLogin ? "red" : "green",
+                                                borderColor: "black",
+                                                borderWidth: 1
+                                            }}
+                                        />}
+                                        right={() => <FontAwesome5
+                                            style={{ paddingRight: 13 }}
+                                            name={this.state.stateLogin ? "chevron-down" : "chevron-up"}
+                                            color={this.state.stateLogin ? "red" : "green"}
+                                            size={20}>
+                                        </FontAwesome5>}
+                                    />
+                                </Card>
+                            </TouchableOpacity>
+                        }
+
+                    */}
+
+
+                        <TouchableOpacity style={{ marginTop: "10%", justifyContent: 'center', alignItems: 'center' }} onPress={() => this.ativarMedicaoSegundoPlano()}>
+                            <Card style={{
+                                elevation: 15, borderWidth: 1, width: "82%", borderColor: "gray",
+                                backgroundColor: this.state.switchValueAutoMedicao ? "white" : "#d3d3d3"
+                            }}>
+                                <Card.Title
+                                    title="Medição Automática"
+                                    subtitle={this.state.switchValueAutoMedicao ? "Ativado" : "Desligado"}
+                                    left={() => <Avatar.Text size={35}
+                                        label={this.state.switchValueAutoMedicao ? "A" : "D"}
+                                        style={{
+                                            backgroundColor: this.state.switchValueAutoMedicao ? "green" : "red",
+                                            borderColor: "black",
+                                            borderWidth: 1
+                                        }}
+                                    />}
+                                />
+                            </Card>
+                        </TouchableOpacity>
 
                     </ScrollView>
+
+
+
                     {/*
                     <SectionList
                         sections={[
@@ -1562,9 +1830,28 @@ export default class HomeScreen extends PureComponent {
                             </>
                         }
 
-                        <TouchableOpacity style={{ alignItems: "flex-end", alignSelf: 'center', margin: 10, paddingTop: 10 }}
-                            onPress={this.fechaModal} >
-                            <FontAwesome5 name='sign-out-alt' color='navy' size={17} > Sair </FontAwesome5>
+                        <TouchableOpacity
+                            onPress={this.fechaModal}
+                            style={{
+                                width: '60%',
+                                height: 40,
+                                backgroundColor: "#007bff",
+                                borderBottomWidth: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginBottom: 9,
+                                flexDirection: "row",
+                                borderColor: "#007bff",
+                                //borderRadius: 0,
+                                borderTopLeftRadius: 5,
+                                borderTopRightRadius: 5,
+                                borderBottomLeftRadius: 5,
+                                borderBottomRightRadius: 5,
+                                padding: 10,
+                                marginTop: 15,
+                            }}>
+                            <FontAwesome5 name="sign-out-alt" size={20} color={Variables.colors.white}></FontAwesome5>
+                            <Text style={{ fontSize: 20, color: Variables.colors.white }} > Sair </Text>
                         </TouchableOpacity>
 
                     </Modal>
@@ -1878,11 +2165,30 @@ export default class HomeScreen extends PureComponent {
 
                             </View>
 
-                            <View style={{ alignItems: 'center', alignContent: "center", backgroundColor: "white", width: 90, marginTop: 30 }}>
+                            <View style={{ alignItems: 'center', alignContent: "center", backgroundColor: "white", marginTop: 30 }}>
 
-                                <TouchableOpacity style={{ alignItems: 'center', alignContent: "center", margin: 3, paddingTop: 1, paddingLeft: 0 }}
-                                    onPress={this.fechaModal} >
-                                    <FontAwesome5 name='sign-out-alt' color='navy' size={25} > Sair </FontAwesome5>
+                                <TouchableOpacity
+                                    onPress={this.fechaModal}
+                                    style={{
+                                        width: '100%',
+                                        height: 40,
+                                        backgroundColor: "navy",
+                                        borderBottomWidth: 1,
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        marginBottom: 9,
+                                        flexDirection: "row",
+                                        borderColor: "#007bff",
+                                        //borderRadius: 0,
+                                        borderTopLeftRadius: 5,
+                                        borderTopRightRadius: 5,
+                                        borderBottomLeftRadius: 5,
+                                        borderBottomRightRadius: 5,
+                                        padding: 10,
+                                        marginTop: 15,
+                                    }}>
+                                    <FontAwesome5 name="sign-out-alt" size={20} color={Variables.colors.white}></FontAwesome5>
+                                    <Text style={{ fontSize: 20, color: Variables.colors.white }} > Sair </Text>
                                 </TouchableOpacity>
 
                             </View>
@@ -2152,7 +2458,9 @@ const styles = StyleSheet.create({
     titleText: {
         fontSize: 24,
         fontWeight: "bold",
-        paddingBottom: 10,
+        paddingBottom: 1,
+        paddingTop: 12,
+        color: 'white'
     },
     titleTextTitulo: {
         fontSize: 12,
@@ -2166,7 +2474,8 @@ const styles = StyleSheet.create({
     },
     titleTextTituloID: {
         fontSize: 14,
-        color: 'gray'
+        color: 'gray',
+        fontWeight: "bold",
         //fontWeight: "bold",
         // marginTop: 10,
     },
@@ -2183,7 +2492,7 @@ const styles = StyleSheet.create({
         backgroundColor: "white",
         flex: 1,
         //padding: 10,
-        //margin: 50, 
+        //margin: 50,
         marginRight: 10,
         marginBottom: 10,
         marginTop: 10,
@@ -2217,15 +2526,15 @@ const styles = StyleSheet.create({
     cardBorderMenu: {
         backgroundColor: "white",
         flex: 1,
-        //padding: 10,
-        //margin: 50, 
-        marginRight: 10,
+        padding: 12,
+        //margin: 50,
+        marginRight: 20,
         marginBottom: 10,
-        marginTop: 0,
-        marginLeft: 10,
+        marginTop: 20,
+        marginLeft: 30,
 
         width: 115,
-        height: 120,
+        height: 130,
 
         borderColor: "navy",
         borderWidth: 1,
@@ -2251,7 +2560,7 @@ const styles = StyleSheet.create({
         backgroundColor: "white",
         flex: 1,
         //padding: 10,
-        //margin: 50, 
+        //margin: 50,
         marginRight: 10,
         marginBottom: 10,
         marginTop: 20,
@@ -2287,13 +2596,16 @@ const styles = StyleSheet.create({
         //borderTopLeftRadius: 30,
         //borderBottomRightRadius: 30,
         //borderBottomLeftRadius: 30,
-        backgroundColor: 'white',
+        backgroundColor: '#000030',
         //flex: 1,
         paddingTop: 40,
         padding: 30,
         //margin: 10,
         borderColor: 'black',
         //borderBottomWidth: 1
+        //width: window.width,
+        height: window.height / 7.5,
+
     },
     tinyLogo: {
         width: 80,

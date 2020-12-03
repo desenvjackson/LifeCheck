@@ -62,7 +62,7 @@ export default class LoginScreen extends PureComponent {
                 nome: nome
             })
         }
-        console.log('avatar' + this.state.nome)
+        //console.log('avatar' + this.state.nome)
 
         var loginAuto = await AsyncStorage.getItem("loginAuto")
 
@@ -107,18 +107,24 @@ export default class LoginScreen extends PureComponent {
                 // Executa o método "login" na controller "usuario" na API
                 var { data: token } = await api.post("login/acesso", "dados=" + JSON.stringify(usuario));
 
-                console.log(JSON.stringify(token["dados"][0]["nome"]))
+                //console.log(JSON.stringify(token["dados"][0]["nome"]))
 
                 //Passando o status da consulta, em caso de SUCESSO ou ERRO
                 if (token["status"] === 'sucesso') {
-                    console.log(token)
+                    //console.log(token)
+
                     // Atribundo valor de retorno da consulta JSON para uma GLOBAL
                     await AsyncStorage.setItem("email", JSON.stringify(token["dados"][0]["email"]));
                     await AsyncStorage.setItem("nome", JSON.stringify(token["dados"][0]["nome"]));
                     await AsyncStorage.setItem("id_firm", JSON.stringify(token["dados"][0]["id_firm"]));
                     await AsyncStorage.setItem("id_patient", JSON.stringify(token["dados"][0]["id_patient"]));
+                    await AsyncStorage.setItem("id_device", JSON.stringify(token["dados"][0]["id_device"]));
+
+                    //Auto login
                     await AsyncStorage.setItem("login", this.state.usuario);
                     await AsyncStorage.setItem("senha", this.state.senha);
+
+                    //  Validando o uso da imagem do Avatar
                     if (token["dados"][0]["avatar"] != null) {
                         await AsyncStorage.setItem("avatar", token["dados"][0]["avatar"])
                     } else {
