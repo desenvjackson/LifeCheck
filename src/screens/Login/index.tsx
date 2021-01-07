@@ -192,8 +192,8 @@ export default class LoginScreen extends PureComponent {
                             resizeMode="contain"
                         />
                     </View>
+                    {/*
                     <View style={{alignItems:'center', paddingBottom: 20 }}>
-
                         {this.state.avatar ?
                             <Image
                                 source={{ uri: this.state.avatar }}
@@ -208,14 +208,13 @@ export default class LoginScreen extends PureComponent {
                                     width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
                                 }} />
                         }
-
                         <Text style={{
                             fontSize: 14,
                             color: 'gray',
                             paddingTop:2
                         }}>{this.state.nome}</Text>
-
                     </View>
+                    */}
 
                     <View style={{
 
@@ -322,28 +321,27 @@ export default class LoginScreen extends PureComponent {
                     </View>
 
 
-                    <View style={{ justifyContent: 'center', alignItems: 'center'}}>
+                    <View style={{ justifyContent: 'center', alignItems: 'center' }}>
 
                         {this.state.loading &&
                             <TouchableOpacity
                                 onPress={this.login}
                                 style={{
                                     width: '60%',
-                                    height: 40,
-                                    backgroundColor: "#007bff",
-                                    borderBottomWidth: 1,
+                                    height: 50,
+                                    backgroundColor: "#273574",
+                                    borderBottomWidth: 0,
                                     justifyContent: 'center',
                                     alignItems: 'center',
                                     marginBottom: 9,
                                     flexDirection: "row",
-                                    borderColor: "#007bff",
-                                    //borderRadius: 0,
-                                    borderTopLeftRadius: 5,
-                                    borderTopRightRadius: 5,
-                                    borderBottomLeftRadius: 5,
-                                    borderBottomRightRadius: 5,
+                                    borderColor: "#397bfc",
+                                    borderTopLeftRadius: 10,
+                                    borderTopRightRadius: 10,
+                                    borderBottomLeftRadius: 10,
+                                    borderBottomRightRadius: 10,
                                     padding: 10,
-                                    marginTop: 15,
+                                    marginTop: 35,                                    
                                 }}>
                                 <FontAwesome5 name="power-off" size={20} color={Variables.colors.white}></FontAwesome5>
                                 <Text style={{ fontSize: 18, color: Variables.colors.white }} > Conecte-se </Text>
@@ -385,7 +383,8 @@ export const loginStyles = {
 
     } as ViewStyle,
     logo: {
-        width: 250,
+        width: 370,
+        height: 150,
     }
 }
 

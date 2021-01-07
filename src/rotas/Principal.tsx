@@ -17,7 +17,7 @@ export default function cadastrodRoutes() {
 
         <Tab.Navigator initialRouteName="Home"
             tabBarOptions={{
-                activeTintColor: 'red',
+                activeTintColor: '#fff',
                 labelPosition: 'below-icon', // Coloca a descrição dos botões abaixo
                 keyboardHidesTabBar: true, //Oculta a barra de menus
                 labelStyle: {
@@ -30,7 +30,7 @@ export default function cadastrodRoutes() {
                     borderRightColor: ''
                 },
                 style: {
-                    backgroundColor: '#fff',
+                    backgroundColor: '#273574',
                     height: 55
 
                 },
@@ -53,23 +53,23 @@ export default function cadastrodRoutes() {
 */}
 
             <Tab.Screen
-                name="Home"
+                name="HOME"
                 component={Scan}
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={30} color="red"></FontAwesome5>
+                        <FontAwesome5 name="home" style={{ paddingBottom: 30 }} size={30} color="#fff"></FontAwesome5>
                     ),
                     unmountOnBlur: true
                 }}
             />
             <Tab.Screen
-                name="Saiba mais"
+                name="INFOS"
                 component={Alertas}
                 options={{
 
                     tabBarIcon: ({ }) => (
-                        <FontAwesome5 name="info-circle" style={{ paddingBottom: 30 }} size={30} color="navy"></FontAwesome5>
+                        <FontAwesome5 name="info-circle" style={{ paddingBottom: 30 }} size={30} color="#fff"></FontAwesome5>
                     ),
                     unmountOnBlur: true
                 }}

@@ -39,7 +39,12 @@ import BackgroundJob from 'react-native-background-actions';
 import Styles, { Variables } from "../../styles";
 import { RNCamera } from 'react-native-camera';
 import ImagePicker from 'react-native-image-picker';
-
+import base64 from 'react-native-base64'
+var converter = require('hex2dec');
+//import base64 from 'base-64'
+import utf8 from 'utf8'
+import { createNavigatorFactory } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
 
 const options = {
     title: 'Choose an Image',
@@ -718,13 +723,12 @@ export default class HomeScreen extends PureComponent {
         await this.setState({ conectando: "Conectando...", corIconBluetooth: 'navy', loading: true, dados: [], modal: false })
 
         if (!comando) { await this.setState({ loadingMedicao: true, modalMedicao: true }) }
-
         console.log("Connecting to device #### ")
-
         try {
             //if (!isConnected) {
             console.log("Connecting to device :")
-            device = await manager.connectToDevice(device.id, { autoConnect: true })
+            //device = await manager.connectToDevice(device.id, { autoConnect: true })
+            device = await manager.connectToDevice(device.id)
             console.log("connectToDevice >>> ")
             this.setState({ deviceDados: device })
 
@@ -753,7 +757,26 @@ export default class HomeScreen extends PureComponent {
 
         } catch (err) {
             // some error handling
-            console.log("deviceconnect" + err);
+            console.log("deviceconnect " + err);
+
+            //Em caso de erros. Repetir a operação.
+            Alert.alert("Medição falhou",
+                "Deseja repetir ?",
+                [
+                    //{
+                    //    text: 'Ask me later',
+                    //    onPress: () => console.log('Ask me later pressed')
+                    //},
+                    {
+                        text: 'Sair',
+                        onPress: () => console.log('Cancel Pressed'),
+                        style: 'cancel'
+                    },
+                    { text: 'Sim', onPress: () => this.scanAndConnect() }
+                ],
+                { cancelable: false }
+            );
+
         }
     }
 
@@ -777,12 +800,108 @@ export default class HomeScreen extends PureComponent {
             } else {
                 console.log("Instant Check:", "Sem dispositivo conectado");
             }
+
+
+            // Ajustando o horário do relógio
+            //Tratamento do campo de hora/data/min/seg
+            let date = new Date().getDate()
+            date = converter.decToHex(date.toString())
+            let returndateShortHex = date.toString().replace('0x', '0')
+            let month = new Date().getMonth() + 1;
+            month = converter.decToHex(month.toString())
+            let returnmonthShortHex = month.toString().replace('0x', '0')
+            let year = new Date().getFullYear();
+            year = converter.decToHex(year.toString())
+            let yearHex = year.toString().replace('0x', '0')
+            let yearShort = new Date().getFullYear()
+            let returnyearShort = converter.decToHex(yearShort.toString().substr(2, 2))
+            let returnyearShortHex = returnyearShort.toString().replace('0x', '')
+
+            let dates = new Date();
+            let hours = dates.getHours();
+            hours = converter.decToHex(hours.toString())
+            let returnhoursShortHex = hours.toString().replace('0x', '0')
+            let minutes = dates.getMinutes();
+            minutes = converter.decToHex(minutes.toString())
+            let returnminutesShortHex = minutes.toString().replace('0x', '0')
+            let seconds = dates.getSeconds();
+            seconds = converter.decToHex(seconds.toString())
+            let returnsecondsShortHex = seconds.toString().replace('0x', '0')
+
+            // Tratando tamanho das variáveis
+            if (returnhoursShortHex.length >= 3) { returnhoursShortHex = returnhoursShortHex.toString().substr(1, 2) }
+            if (returnminutesShortHex.length >= 3) { returnminutesShortHex = returnminutesShortHex.toString().substr(1, 2) }
+            if (returnsecondsShortHex.length >= 3) { returnsecondsShortHex = returnsecondsShortHex.toString().substr(1, 2) }
+            if (returndateShortHex.length >= 3) { returndateShortHex = returndateShortHex.toString().substr(1, 2) }
+            if (returnmonthShortHex.length >= 3) { returnmonthShortHex = returnmonthShortHex.toString().substr(1, 2) }
+            if (returnyearShortHex.length >= 3) { returnyearShortHex = returnyearShortHex.toString().substr(1, 2) }
+
+            var comandFullAlterTime = "AB000BFF9380" + yearHex + returnyearShortHex + returnmonthShortHex + returndateShortHex + returnhoursShortHex + returnminutesShortHex + returnsecondsShortHex + ""
+
+            // AB 00 0B FF 93 80 07e4 14 0c 010 011 0b 0d
+            /*
+            var comandFullAlterTime = "AB 00 0B FF 93 80 " + yearHex + " " + 
+            returnyearShortHex + " " +  
+            returnmonthShortHex + " " +  
+            returndateShortHex  + " " + 
+            returnhoursShortHex + " " + 
+            returnminutesShortHex + " " +  
+            returnsecondsShortHex + " "
+            */
+
+            // ---------
+            // CONVERT - BASE64
+            // ---------
+            let hexStringCommand = comandFullAlterTime //"Tem que passar a variavel com os comandos em hex sem espaço, para converter em base64 de forma correta";
+            console.log(hexStringCommand)
+            let bytes = this.hexToBytes(hexStringCommand);
+            let base64Command = this.bytesArrToBase64(bytes);
+
+            if (device) {
+                let UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // UART Service
+                let RX_CHARACT = "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // RX Characteristic (Property = Write without response e READ )
+                let comandoAllClock = base64Command
+                await manager.writeCharacteristicWithResponseForDevice(device.id,
+                    UART_SERVICE, RX_CHARACT,
+                    comandoAllClock
+                )
+                    .then(characteristic => {
+                        console.log(" ajustar o relógio: " + characteristic.value)
+                    })
+                    .catch(err => {
+                        console.log(" valores > ajustar o relógio FF :  " + err)
+                    });
+            } else {
+                console.log("Instant Check:", "Sem dispositivo conectado para ajustar o relógio");
+            }
+
         } catch (err) {
             // some error handling
             console.log("vibratephone" + err);
         }
     }
 
+
+    bytesArrToBase64(arr) {
+        const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; // base64 alphabet
+        const bin = n => n.toString(2).padStart(8, 0); // convert num to 8-bit binary string
+        const l = arr.length
+        let result = '';
+
+        for (let i = 0; i <= (l - 1) / 3; i++) {
+            let c1 = i * 3 + 1 >= l; // case when "=" is on end
+            let c2 = i * 3 + 2 >= l; // case when "=" is on end
+            let chunk = bin(arr[3 * i]) + bin(c1 ? 0 : arr[3 * i + 1]) + bin(c2 ? 0 : arr[3 * i + 2]);
+            let r = chunk.match(/.{1,6}/g).map((x, j) => j == 3 && c2 ? '=' : (j == 2 && c1 ? '=' : abc[+('0b' + x)]));
+            result += r.join('');
+        }
+
+        return result;
+    }
+
+    hexToBytes(hexString) {
+        return hexString.match(/.{1,2}/g).map(x => +('0x' + x));
+    }
 
     measureTempNow = async (device) => {
         if (!device) {
@@ -1344,18 +1463,24 @@ export default class HomeScreen extends PureComponent {
                     backgroundColor="black"
                 />
 
-
                 <View
                     style={{
-                        paddingTop: 5,
+                        paddingTop: 2,
                         backgroundColor: "#f5f5f5",
+
                         flex: 1,
-                        // width: window.width,
-                        //height: window.height/3,
+                        width: window.width,
+                        height: window.height / 3,
                     }}
 
                 >
-                    <View style={styles.cardBorderPersonal}>
+                    <View>
+                    <LinearGradient
+                            colors={['#32b7e9',  '#273574']}
+                            style={styles.linearGradient}
+                            start={{ x: 0, y: 0 }}
+                            //end={{ x: 0, y: 0 }} 
+                        >
                         <View style={styles.avatarView}>
                             {this.state.carregafoto &&
                                 <TouchableOpacity onPress={() => this.selecionarFotoouGaleria()} style={{ paddingRight: 15, paddingLeft: 15 }}>
@@ -1364,7 +1489,7 @@ export default class HomeScreen extends PureComponent {
                                         <Image
                                             source={{ uri: this.state.avatar }}
                                             style={{
-                                                width: 80, height: 80, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                                width: 100, height: 100, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3
                                             }}
                                         />
                                         :
@@ -1380,130 +1505,43 @@ export default class HomeScreen extends PureComponent {
                                 <Text><ActivityIndicator size={"small"} color="black" style={{ marginTop: 10 }} /> carregando ... </Text>
 
                             }
-
                             <View>
                                 <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
                                 <Text style={styles.titleTextTituloID} > {this.state.deviceID}   </Text>
                             </View>
                         </View>
-                        {/*
-                        <View style={{ paddingLeft: 120, paddingTop: 3 }}  >
-
-                            <TouchableOpacity onPress={() => this.scanAndConnect()} >
-
-                                <View style={{ flexDirection: "row", paddingTop: 0 }}>
-
-                                    {/*
-                                    {this.state.connected ?
-                                        <FontAwesome5 name="bluetooth" size={23} color='green'> Conectado ! </FontAwesome5> :
-                                        <FontAwesome5 name="bluetooth" size={23} color={this.state.corIconBluetooth}> </FontAwesome5>
-                                    }
-
-                                    {this.state.loading &&
-                                        <>
-                                            <Text><ActivityIndicator size={"small"} color="red" style={{ marginTop: 10 }} /> Conectando... </Text>
-                                        </>
-                                    }
-
-                                    {!this.state.loading &&
-                                        <Text style={{ color: 'gray', fontFamily: '', fontWeight: '400', textAlign: 'right', paddingLeft: 4, fontSize: 20 }}>
-                                            {this.state.connected ? '' : 'Desconectado'}
-                                        </Text>
-                                    }
-                                </View>
-                            </TouchableOpacity>
-                        </View>
-                    */}
+                        </LinearGradient>
                     </View>
 
                     <ScrollView style={{ flex: 1 }}>
-
-                        {/*
-                        <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15, marginTop: 50 }} onPress={() => this.scanAndConnect()}>
-                            <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
-                                <Card.Title
-                                    title="Medições Vitais"
-                                    subtitle="Realize sua medição agora"
-                                    left={() => <Avatar.Text size={35}
-                                        label="M"
-                                        style={{
-                                            backgroundColor: "white",
-                                            borderColor: "black",
-                                            borderWidth: 1
-                                        }}
-                                    />}
-                                    right={() => <FontAwesome5
-                                        style={{ paddingRight: 13 }}
-                                        name="stethoscope"
-                                        color="navy"
-                                        size={20}>
-                                    </FontAwesome5>}
-                                />
-                            </Card>
-                        </TouchableOpacity>
-  */}
-
-                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1, marginTop: "10%" }}>
-
+                        <View style={{ flexDirection: "row", justifyContent: "center", flex: 1, marginTop: "20%" }}>
                             <TouchableOpacity onPress={() => this.scanAndConnect()}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
-
                                         {!this.state.loadingMedicaoVital &&
                                             <View >
                                                 <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text>
-                                                <Text style={styles.textTextDescricao} >  MEDIÇÕES {"\n"} VITAIS </Text>
+                                                <Text style={styles.textTextDescricao} >  Medições Vitais </Text>
                                             </View >
                                         }
-
                                         {this.state.loadingMedicaoVital &&
                                             <Text style={{ alignItems: 'center', alignContent: "center", fontSize: 15 }}>
                                                 <ActivityIndicator size={"large"} color="gray" style={{ marginTop: 10 }} /> {"\n\n"} Aguarde... </Text>
                                         }
-
-
                                     </View>
                                 </View>
                             </TouchableOpacity>
-
-
 
                             <TouchableOpacity onPress={() => this.props.navigation.navigate("Historico")}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"history"} size={50} color="navy" /> </Text>
-                                        <Text style={styles.textTextDescricao} >  HISTÓRICO  </Text>
+                                        <Text style={styles.textTextDescricao} >  Histórico  </Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
 
                         </View>
-
-                        {/*
-                        <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.props.navigation.navigate("Historico")}>
-                            <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
-                                <Card.Title
-                                    title="Histórico"
-                                    subtitle="Veja suas últimas medições"
-                                    left={() => <Avatar.Text size={35}
-                                        label="H"
-                                        style={{
-                                            backgroundColor: "navy",
-                                            borderColor: "black",
-                                            borderWidth: 1
-                                        }}
-                                    />}
-                                    right={() => <FontAwesome5
-                                        style={{ paddingRight: 13 }}
-                                        name="heart"
-                                        color="navy"
-                                        size={20}>
-                                    </FontAwesome5>}
-                                />
-                            </Card>
-                        </TouchableOpacity>
-                                    */}
-
 
                         <View style={{ flexDirection: "row", justifyContent: "center", flex: 1 }}>
 
@@ -1520,11 +1558,13 @@ export default class HomeScreen extends PureComponent {
                                         marginTop: 20,
                                         marginLeft: 30,
 
-                                        width: 115,
+                                        width: 120,
                                         height: 130,
 
-                                        borderColor: "navy",
-                                        borderWidth: 1,
+                                        borderRightColor: "#397bfc",
+                                        borderRightWidth: 3,
+                                        borderBottomColor: "#397bfc",
+                                        borderBottomWidth: 3,
 
                                         borderTopLeftRadius: 10,
                                         borderTopRightRadius: 10,
@@ -1543,7 +1583,7 @@ export default class HomeScreen extends PureComponent {
                                     }}>
                                         <View >
                                             <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text>
-                                            <Text style={styles.textTextDescricao} >  LOGIN AUTOMÁTICO  </Text>
+                                            <Text style={styles.textTextDescricao} >  Login Automático  </Text>
                                             <Text style={{
                                                 fontSize: 12, color: "navy", opacity: 0.4, alignItems: "center",
                                                 alignSelf: "center", paddingBottom: 2
@@ -1557,7 +1597,7 @@ export default class HomeScreen extends PureComponent {
                             {!this.state.stateLogin &&
                                 <TouchableOpacity onPress={() => this.desativarLoginAuto()} >
                                     <View style={{
-                                        backgroundColor: "#d3d3d3",
+                                        backgroundColor: "white",
                                         flex: 1,
                                         //padding: 10,
                                         //margin: 50, 
@@ -1566,11 +1606,13 @@ export default class HomeScreen extends PureComponent {
                                         marginTop: 20,
                                         marginLeft: 30,
 
-                                        width: 115,
+                                        width: 120,
                                         height: 130,
 
-                                        borderColor: "navy",
-                                        borderWidth: 1,
+                                        borderRightColor: "#397bfc",
+                                        borderRightWidth: 3,
+                                        borderBottomColor: "#397bfc",
+                                        borderBottomWidth: 3,
 
                                         borderTopLeftRadius: 10,
                                         borderTopRightRadius: 10,
@@ -1589,7 +1631,7 @@ export default class HomeScreen extends PureComponent {
                                     }}>
                                         <View >
                                             <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock"} size={50} color="navy" /> </Text>
-                                            <Text style={styles.textTextDescricao} >  LOGIN AUTOMÁTICO  </Text>
+                                            <Text style={styles.textTextDescricao} >  Login Automático </Text>
                                             <Text style={{
                                                 fontSize: 12, color: "navy", opacity: 0.7, alignItems: "center",
                                                 alignSelf: "center", paddingBottom: 2
@@ -1606,132 +1648,39 @@ export default class HomeScreen extends PureComponent {
                                 <View style={styles.cardBorderMenu}>
                                     <View >
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"user-cog"} size={50} color="navy" /> </Text>
-                                        <Text style={styles.textTextDescricao} >OPÇÕES</Text>
+                                        <Text style={styles.textTextDescricao} >Opções</Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
 
                         </View>
 
-                        {/*
-                        <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
-                            <View style={styles.cardBorderMenuAuto}>
-                                <View >
-                                    <Text style={styles.textTextDescricaoAuto} >  Ativar medição em Segundo Plano </Text>
-                                </View>
-                            </View>
-                        </TouchableOpacity>
-                        */}
-
-                        {/*
-                        <TouchableOpacity onPress={() => this.ativarMedicaoSegundoPlano()}>
-                            <View style={styles.cardBorderMenuAuto}>
-                                <Text style={styles.textTextDescricaoAuto}>
-                                    {this.state.switchValueAutoMedicao ? 'Medição Automática- Ativado' : 'Medição Automática- Desativado'}
-                                </Text>
-                                <Switch
-                                    style={{
-                                        paddingLeft: 1
-                                    }}
-                                    onValueChange={this.ativarMedicaoSegundoPlano}
-                                    value={this.state.switchValueAutoMedicao}
-                                />
-                            </View>
-                        </TouchableOpacity>
-                        */}
-
-                        {/*
-                        <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.props.navigation.navigate("Opcoes")}>
-                            <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
-                                <Card.Title
-                                    title="Configurações"
-                                    subtitle=""
-                                    left={() => <Avatar.Text size={35}
-                                        label="G"
-                                        style={{
-                                            backgroundColor: "navy",
-                                            borderColor: "black",
-                                            borderWidth: 1
-                                        }}
-                                    />}
-                                    right={() => <FontAwesome5
-                                        style={{ paddingRight: 13 }}
-                                        name={this.state.switchValueAutoMedicao ? "user-cog" : "user-cog"}
-                                        color={this.state.switchValueAutoMedicao ? "navy" : "navy"}
-                                        size={20}>
-                                    </FontAwesome5>}
-                                />
-                            </Card>
-                        </TouchableOpacity>
-                    */}
-
-                        {/*
-                        {this.state.stateLogin &&
-                            <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.ativarLoginAuto()}>
-                                <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
-                                    <Card.Title
-                                        title="Login Automático"
-                                        subtitle={this.state.stateLogin ? "Desligado" : "Ativado"}
-                                        left={() => <Avatar.Text size={35}
-                                            label={this.state.stateLogin ? "OFF" : "L"}
-                                            style={{
-                                                backgroundColor: this.state.stateLogin ? "red" : "green",
-                                                borderColor: "black",
-                                                borderWidth: 1
-                                            }}
-                                        />}
-                                        right={() => <FontAwesome5
-                                            style={{ paddingRight: 13 }}
-                                            name={this.state.stateLogin ? "chevron-down" : "chevron-up"}
-                                            color={this.state.stateLogin ? "red" : "green"}
-                                            size={20}>
-                                        </FontAwesome5>}
-                                    />
-                                </Card>
-                            </TouchableOpacity>
-                        }
-                        {!this.state.stateLogin &&
-                            <TouchableOpacity style={{ justifyContent: 'center', alignItems: 'center', marginBottom: 15 }} onPress={() => this.desativarLoginAuto()}>
-                                <Card style={{ elevation: 15, borderWidth: 1, width: "88%", borderColor: "gray" }}>
-                                    <Card.Title
-                                        title="Login Automático"
-                                        subtitle={this.state.stateLogin ? "Desligado" : "Ativado"}
-                                        left={() => <Avatar.Text size={35}
-                                            label={this.state.stateLogin ? "OFF" : "L"}
-                                            style={{
-                                                backgroundColor: this.state.stateLogin ? "red" : "green",
-                                                borderColor: "black",
-                                                borderWidth: 1
-                                            }}
-                                        />}
-                                        right={() => <FontAwesome5
-                                            style={{ paddingRight: 13 }}
-                                            name={this.state.stateLogin ? "chevron-down" : "chevron-up"}
-                                            color={this.state.stateLogin ? "red" : "green"}
-                                            size={20}>
-                                        </FontAwesome5>}
-                                    />
-                                </Card>
-                            </TouchableOpacity>
-                        }
-
-                    */}
-
-
-                        <TouchableOpacity style={{ marginTop: "10%", justifyContent: 'center', alignItems: 'center' }} onPress={() => this.ativarMedicaoSegundoPlano()}>
+                        <TouchableOpacity style={{
+                            marginTop: "10%",
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginBottom: 30
+                        }} onPress={() => this.ativarMedicaoSegundoPlano()}>
                             <Card style={{
-                                elevation: 15, borderWidth: 1, width: "82%", borderColor: "gray",
-                                backgroundColor: this.state.switchValueAutoMedicao ? "white" : "#d3d3d3"
+                                elevation: 1, width: "81%",
+                                borderRightColor: "#397bfc",
+                                borderRightWidth: 3,
+                                borderBottomColor: "#397bfc",
+                                borderBottomWidth: 3,
+                                backgroundColor: this.state.switchValueAutoMedicao ? "white" : "white"
                             }}>
                                 <Card.Title
                                     title="Medição Automática"
+                                    titleStyle={{ color:"navy" }}
                                     subtitle={this.state.switchValueAutoMedicao ? "Ativado" : "Desligado"}
-                                    left={() => <Avatar.Text size={35}
-                                        label={this.state.switchValueAutoMedicao ? "A" : "D"}
+                                    right={() => <Avatar.Text size={30}
+                                        label={this.state.switchValueAutoMedicao ? "ON" : "OFF"}
                                         style={{
                                             backgroundColor: this.state.switchValueAutoMedicao ? "green" : "red",
                                             borderColor: "black",
-                                            borderWidth: 1
+                                            borderWidth: 1,
+                                            marginRight: 20,
+                                            width: 43
                                         }}
                                     />}
                                 />
@@ -1739,48 +1688,6 @@ export default class HomeScreen extends PureComponent {
                         </TouchableOpacity>
 
                     </ScrollView>
-
-
-
-                    {/*
-                    <SectionList
-                        sections={[
-                            // { title: 'MEUS DADOS:', data: ['Perfil', 'Saúde e bem-estar'] },
-                            { title: 'INDICADORES:', data: ['MULTIMEDIÇÃO', 'Alertas', 'Histórico'] },
-                        ]}
-                        renderItem={({ item }) =>
-                            <TouchableOpacity onPress={() => this.abreModal({ item })} >
-                                <Text style={styles.item}>{item}</Text>
-                            </TouchableOpacity>
-                        }
-                        renderSectionHeader={({ section }) =>
-                            <Text style={styles.sectionHeader}><FontAwesome5 name="file-medical-alt" size={22} color='navy'></FontAwesome5> {section.title}</Text>
-                        }
-                        keyExtractor={(item, index) => index}
-                    />
-
-
-                    <Text style={styles.sectionHeader}> <FontAwesome5 name="user-cog" size={22} color='navy'></FontAwesome5> GERENCIAR:</Text>
-
-
-                    <View style={{ flexDirection: "row", paddingLeft: 35, margin: 12 }}>
-
-                        <Text style={{ paddingLeft: 9, fontSize: 15 }}>{this.state.switchValue1 ? 'Login automático - Ativado' : 'Login automático - Desativado'}</Text>
-                        <Switch
-                            style={{ paddingLeft: 50 }}
-                            onValueChange={this.toggleSwitch1}
-                            value={this.state.switchValue1} />
-                    </View>
-
-                    <TouchableOpacity
-                        onPress={() => this.desconectar(this.state.deviceDados)} >
-                        <View style={{ flexDirection: "row", paddingLeft: 35, margin: 12 }}>
-
-
-                            <Text style={{ paddingLeft: 9, fontSize: 15 }}>Desconectar dispositivo </Text>
-                        </View>
-                    </TouchableOpacity>
- */}
                 </View>
 
 
@@ -2093,7 +2000,7 @@ export default class HomeScreen extends PureComponent {
                                     resizeMode="contain"
                                     style={styles.logoMedicao}
                                 />
-                                <Text style={styles.textlogoMedicao} > MEDIÇÕES VITAIS  </Text>
+                                <Text style={styles.textlogoMedicao} > Medições vitais </Text>
 
                                 <View style={{ flexDirection: "row", justifyContent: "center" }}>
 
@@ -2138,20 +2045,16 @@ export default class HomeScreen extends PureComponent {
                                         </View>
                                     </TouchableOpacity>
 
-
                                     <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
-
                                                 <Text style={styles.textTextDescricao} > Temperatura  </Text>
                                                 <Text style={styles.titleTextTitulo}>( °C ) </Text>
                                                 <Text style={styles.textText} >{this.state.temperatura}</Text>
                                                 <Text style={styles.textTextDescricao} >{this.state.temperatura > '38' ? "Atenção" : "Normal"}   </Text>
-
                                             </View>
                                         </View>
                                     </TouchableOpacity>
-
                                 </View>
 
                                 <View style={{ padding: 5 }}>
@@ -2170,7 +2073,7 @@ export default class HomeScreen extends PureComponent {
                                 <TouchableOpacity
                                     onPress={this.fechaModal}
                                     style={{
-                                        width: '100%',
+                                        width: '30%',
                                         height: 40,
                                         backgroundColor: "navy",
                                         borderBottomWidth: 1,
@@ -2185,7 +2088,7 @@ export default class HomeScreen extends PureComponent {
                                         borderBottomLeftRadius: 5,
                                         borderBottomRightRadius: 5,
                                         padding: 10,
-                                        marginTop: 15,
+                                        marginTop: 7,
                                     }}>
                                     <FontAwesome5 name="sign-out-alt" size={20} color={Variables.colors.white}></FontAwesome5>
                                     <Text style={{ fontSize: 20, color: Variables.colors.white }} > Sair </Text>
@@ -2391,8 +2294,9 @@ const styles = StyleSheet.create({
         paddingTop: 22
     },
     logoMedicao: {
-        marginTop: 5,
+        marginTop: 1,
         width: 200,
+        height: 80,
         alignContent: "center",
         alignItems: "center",
         alignSelf: "center",
@@ -2405,7 +2309,8 @@ const styles = StyleSheet.create({
         alignSelf: "center",
         textAlign: "center",
         textAlignVertical: "center",
-        marginBottom: 20,
+        marginBottom: 15,
+        marginTop: 10,
         fontWeight: "bold",
     },
     avatarView: {
@@ -2456,11 +2361,12 @@ const styles = StyleSheet.create({
         //fontWeight: "bold",
     },
     titleText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "bold",
         paddingBottom: 1,
-        paddingTop: 12,
-        color: 'white'
+        paddingTop: 6,
+        color: 'white',
+        fontFamily: 'Montserrat Regular'
     },
     titleTextTitulo: {
         fontSize: 12,
@@ -2473,10 +2379,11 @@ const styles = StyleSheet.create({
         // marginTop: 10,
     },
     titleTextTituloID: {
-        fontSize: 14,
+        fontSize: 11,
         color: 'gray',
-        fontWeight: "bold",
-        //fontWeight: "bold",
+        fontFamily: 'Montserrat Regular'
+        // fontWeight: "bold",
+        // fontWeight: "bold",
         // marginTop: 10,
     },
     titleTextBodyMenu: {
@@ -2527,24 +2434,28 @@ const styles = StyleSheet.create({
         backgroundColor: "white",
         flex: 1,
         padding: 12,
-        //margin: 50,
         marginRight: 20,
         marginBottom: 10,
         marginTop: 20,
         marginLeft: 30,
 
-        width: 115,
+        width: 120,
         height: 130,
 
-        borderColor: "navy",
-        borderWidth: 1,
+        // borderColor: "#fff",
+        // borderWidth: 1,
+
+        borderRightColor: "#397bfc",
+        borderRightWidth: 3,
+        borderBottomColor: "#397bfc",
+        borderBottomWidth: 3,
 
         borderTopLeftRadius: 10,
         borderTopRightRadius: 10,
         borderBottomLeftRadius: 10,
         borderBottomRightRadius: 10,
 
-        shadowColor: 'black',
+        shadowColor: '#397bfc',
         shadowOffset: { width: 50, height: 50 },
         shadowOpacity: 3,
         shadowRadius: 50,
@@ -2592,20 +2503,11 @@ const styles = StyleSheet.create({
         flexDirection: "row"
     },
     cardBorderPersonal: {
-        //borderTopRightRadius: 30,
-        //borderTopLeftRadius: 30,
-        //borderBottomRightRadius: 30,
-        //borderBottomLeftRadius: 30,
         backgroundColor: '#000030',
-        //flex: 1,
         paddingTop: 40,
         padding: 30,
-        //margin: 10,
         borderColor: 'black',
-        //borderBottomWidth: 1
-        //width: window.width,
         height: window.height / 7.5,
-
     },
     tinyLogo: {
         width: 80,
@@ -2621,11 +2523,8 @@ const styles = StyleSheet.create({
         alignSelf: "center",
     },
     sectionHeader: {
-        //padding: 30,
-        //margin: 10,
         paddingTop: 9,
         paddingLeft: 20,
-        //paddingRight: 10,
         paddingBottom: 9,
         fontSize: 16,
         fontWeight: 'bold',
@@ -2642,34 +2541,24 @@ const styles = StyleSheet.create({
     },
     modal: {
         backgroundColor: 'white',
-        //margin: 30, // This is the important style you need to set
         marginBottom: 220,
-        //marginTop: 5,
-        //alignItems: undefined,
-        //justifyContent: undefined,
     },
     modalPerfil: {
         backgroundColor: 'white',
         margin: 30, // This is the important style you need to set
         marginBottom: 80,
-        //alignItems: undefined,
-        //justifyContent: undefined,
     },
     modalMedicao: {
-        //backgroundColor: '#F8F8FF',
         backgroundColor: 'white',
-        //margin: window.width/2, // This is the important style you need to set
         marginTop: window.width / 15,
-        //width: window.width,
-        //height: window.height,
-        //marginBottom: 1,
-        //alignItems: undefined,
-        //justifyContent: undefined,
-        //flex: 1,
-        //backgroundColor: 'transparent',
         justifyContent: 'center',
-        //position: 'absolute'
 
     },
+    linearGradient: {
+        paddingTop: 40,
+        padding: 30,
+        borderColor: 'black',
+        height: window.height / 6.5,
+      },
 });
 
