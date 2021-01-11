@@ -1475,41 +1475,41 @@ export default class HomeScreen extends PureComponent {
 
                 >
                     <View>
-                    <LinearGradient
-                            colors={['#32b7e9',  '#273574']}
+                        <LinearGradient
+                            colors={['#32b7e9', '#273574']}
                             style={styles.linearGradient}
                             start={{ x: 0, y: 0 }}
-                            //end={{ x: 0, y: 0 }} 
+                        //end={{ x: 0, y: 0 }} 
                         >
-                        <View style={styles.avatarView}>
-                            {this.state.carregafoto &&
-                                <TouchableOpacity onPress={() => this.selecionarFotoouGaleria()} style={{ paddingRight: 15, paddingLeft: 15 }}>
+                            <View style={styles.avatarView}>
+                                {this.state.carregafoto &&
+                                    <TouchableOpacity onPress={() => this.selecionarFotoouGaleria()} style={{ paddingRight: 15, paddingLeft: 15 }}>
 
-                                    {this.state.avatar ?
-                                        <Image
-                                            source={{ uri: this.state.avatar }}
-                                            style={{
-                                                width: 100, height: 100, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3
-                                            }}
-                                        />
-                                        :
-                                        <Image
-                                            source={require('../../assets/user.png')}
-                                            style={{
-                                                width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
-                                            }} />
-                                    }
-                                </TouchableOpacity>
-                            }
-                            {!this.state.carregafoto &&
-                                <Text><ActivityIndicator size={"small"} color="black" style={{ marginTop: 10 }} /> carregando ... </Text>
+                                        {this.state.avatar ?
+                                            <Image
+                                                source={{ uri: this.state.avatar }}
+                                                style={{
+                                                    width: 100, height: 100, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3
+                                                }}
+                                            />
+                                            :
+                                            <Image
+                                                source={require('../../assets/user.png')}
+                                                style={{
+                                                    width: 110, height: 110, borderRadius: 100, borderColor: Variables.colors.gray, borderWidth: 3,
+                                                }} />
+                                        }
+                                    </TouchableOpacity>
+                                }
+                                {!this.state.carregafoto &&
+                                    <Text><ActivityIndicator size={"small"} color="black" style={{ marginTop: 10 }} /> carregando ... </Text>
 
-                            }
-                            <View>
-                                <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
-                                <Text style={styles.titleTextTituloID} > {this.state.deviceID}   </Text>
+                                }
+                                <View>
+                                    <Text style={styles.titleText} > {this.state.nomeUsuario}  </Text>
+                                    <Text style={styles.titleTextTituloID} > {this.state.deviceID}   </Text>
+                                </View>
                             </View>
-                        </View>
                         </LinearGradient>
                     </View>
 
@@ -1520,7 +1520,12 @@ export default class HomeScreen extends PureComponent {
                                     <View >
                                         {!this.state.loadingMedicaoVital &&
                                             <View >
-                                                <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text>
+                                                <Image
+                                                    source={require('../../assets/medicoes.png')}
+                                                    style={{
+                                                        width: 69, height: 79
+                                                    }} />
+                                                {/* <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"stethoscope"} size={50} color="navy" /> </Text> */}
                                                 <Text style={styles.textTextDescricao} >  Medições Vitais </Text>
                                             </View >
                                         }
@@ -1535,7 +1540,12 @@ export default class HomeScreen extends PureComponent {
                             <TouchableOpacity onPress={() => this.props.navigation.navigate("Historico")}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
-                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"history"} size={50} color="navy" /> </Text>
+                                        <Image
+                                            source={require('../../assets/clock.png')}
+                                            style={{
+                                                width: 69, height: 69, marginTop: 10
+                                            }} />
+                                        {/* <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"history"} size={50} color="navy" /> </Text>  */}
                                         <Text style={styles.textTextDescricao} >  Histórico  </Text>
                                     </View>
                                 </View>
@@ -1582,7 +1592,17 @@ export default class HomeScreen extends PureComponent {
                                         alignSelf: "center",
                                     }}>
                                         <View >
-                                            <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text>
+                                        <Image
+                                            source={require('../../assets/login.png')}
+                                            style={{
+                                                height: 55,
+                                                alignContent: "center",
+                                                alignItems: "center",
+                                                alignSelf: "center",
+                                                marginTop: 15
+                                            }} />
+                                        {/* 
+                                            <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text> */}
                                             <Text style={styles.textTextDescricao} >  Login Automático  </Text>
                                             <Text style={{
                                                 fontSize: 12, color: "navy", opacity: 0.4, alignItems: "center",
@@ -1630,7 +1650,17 @@ export default class HomeScreen extends PureComponent {
                                         alignSelf: "center",
                                     }}>
                                         <View >
-                                            <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock"} size={50} color="navy" /> </Text>
+                                        <Image
+                                            source={require('../../assets/login.png')}
+                                            style={{
+                                                height: 55,
+                                                alignContent: "center",
+                                                alignItems: "center",
+                                                alignSelf: "center",
+                                                marginTop: 15
+                                            }} />
+                                        {/*
+                                            <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock"} size={50} color="navy" /> </Text> */}
                                             <Text style={styles.textTextDescricao} >  Login Automático </Text>
                                             <Text style={{
                                                 fontSize: 12, color: "navy", opacity: 0.7, alignItems: "center",
@@ -1647,7 +1677,17 @@ export default class HomeScreen extends PureComponent {
                             <TouchableOpacity onPress={() => this.props.navigation.navigate("Opcoes")}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
-                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"user-cog"} size={50} color="navy" /> </Text>
+                                    <Image
+                                            source={require('../../assets/opcoes.png')}
+                                            style={{
+                                                 marginTop: 10,
+                                                 marginLeft: 20,
+                                                 alignContent: "center",
+                                                 alignItems: "center",
+                                                 alignSelf: "center",
+                                            }} />
+                                        {/*
+                                        <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"user-cog"} size={50} color="navy" /> </Text> */}
                                         <Text style={styles.textTextDescricao} >Opções</Text>
                                     </View>
                                 </View>
@@ -1671,7 +1711,7 @@ export default class HomeScreen extends PureComponent {
                             }}>
                                 <Card.Title
                                     title="Medição Automática"
-                                    titleStyle={{ color:"navy" }}
+                                    titleStyle={{ color: "navy" }}
                                     subtitle={this.state.switchValueAutoMedicao ? "Ativado" : "Desligado"}
                                     right={() => <Avatar.Text size={30}
                                         label={this.state.switchValueAutoMedicao ? "ON" : "OFF"}
@@ -2559,6 +2599,6 @@ const styles = StyleSheet.create({
         padding: 30,
         borderColor: 'black',
         height: window.height / 6.5,
-      },
+    },
 });
 

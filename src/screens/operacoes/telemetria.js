@@ -145,7 +145,7 @@ export default class telemetria extends PureComponent {
                         <Image
                         source={require('../../assets/medicoes.png')}
                         style={{
-                          width: 90, height: 90,marginLeft:4
+                          marginLeft:4
                         }} />
                     </View>
                     <View style={{ paddingBottom: 15 }}>
