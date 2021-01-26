@@ -59,10 +59,7 @@ interface Props {
 }
 
 
-
 let manager = new BleManager();
-//manager.destroy();
-//manager = new BleManager();
 
 const sleep = time => new Promise(resolve => setTimeout(() => resolve(), time));
 
@@ -106,7 +103,9 @@ export default class HomeScreen extends PureComponent {
         outros: '',
         switchValueCardiaco: false, switchValuePressao: false, switchValueDiabete: false,
         switchValue1: true,
-        interval: false, modalMedicao: false, loadingMedicao: false,
+        interval: false,
+        modalMedicao: false,
+        loadingMedicao: false,
         frequenciaCardiaca: '', oxigenio: '', hiperTensao: '', hipoTensao: '', temperatura: '', medeTemperatura: false,
         nomeUsuario: '',
         deviceID: '',
@@ -218,13 +217,16 @@ export default class HomeScreen extends PureComponent {
         let asyncdeviceID = await AsyncStorage.getItem("id_device")
         asyncdeviceID = asyncdeviceID.replace(/[\\"]/g, '')
 
-        manager.stopDeviceScan()
+        // manager.stopDeviceScan()
 
         //Ligando o bluetooth
         manager.enable()
 
-        await manager.destroy()
-        manager = new BleManager()
+        // await manager.destroy()
+        // manager = new BleManager()
+
+        const processconnectBackgroundMeasurement = { device_id: asyncdeviceID, description: "Iniciando medição automática!" }
+        await api.post("monitoring/logTeste", "data=" + JSON.stringify(processconnectBackgroundMeasurement))
 
         let subscription = await manager.onStateChange((state) => {
             console.log("state : #" + state)
@@ -233,6 +235,7 @@ export default class HomeScreen extends PureComponent {
             }
         }, true);
 
+
         //await manager.cancelDeviceConnection(asyncdeviceID);
         // Verificando se é hora de realizar uma leitura de monitoramento # envia o id do paciente - Verifica se tá na hora do monitoramento
         const MonitoringPatient = { id_patient: id_patient }
@@ -240,31 +243,53 @@ export default class HomeScreen extends PureComponent {
 
         //Passando o status da consulta, em caso de SUCESSO ou ERRO
         if (returnData["status"] === 'sucesso' && returnData["dados"] === 1) {
+
+            //Salvando LOG
+            const processBackGround = { device_id: asyncdeviceID, description: "Liberado a consulta em segundo plano" }
+            await api.post("monitoring/logTeste", "data=" + JSON.stringify(processBackGround))
+
+              //Enviando PUSH NOTIFICATION
+              await this.sendNotificationMeasure(1,1,0,0,0,0,0)
+
             try {
                 if (asyncdeviceID) {
+
                     let ScanOptions = { scanMode: ScanMode.LowLatency }
+                    const processBackGroundstartDeviceScan = { device_id: asyncdeviceID, description: "Iniciando startDeviceScan " }
+                    await api.post("monitoring/logTeste", "data=" + JSON.stringify(processBackGroundstartDeviceScan))
+
                     manager.startDeviceScan(null, ScanOptions, (error, device) => {
+                        //manager.startDeviceScan(null, null, (error, device) => {
+                        console.log("sandy", error);
                         if (error) {
                             // Handle error (scanning will be stopped automatically)
-                            console.log("Error - startDeviceScan : " + error);
+                            console.log("Error - startDeviceScan : " + "error");
+                            const processBackGroundConnectedError = { device_id: asyncdeviceID, description: error }
+                            api.post("monitoring/logTeste", "data=" + JSON.stringify(processBackGroundConnectedError))
                             return
                         }
                         if (device.id === asyncdeviceID) {
                             // Parando scaneamento dos devices
                             manager.stopDeviceScan()
+                            const processBackGroundConnected = { device_id: asyncdeviceID, description: "Device Connect " }
+                            api.post("monitoring/logTeste", "data=" + JSON.stringify(processBackGroundConnected))
                             this.deviceconnect(device, true)
                         }
                         console.log("loopando", asyncdeviceID)
                         console.log(device.id)
                     });
+
                 } else {
-                    console.log("CONECTADO !!!! O MENINO ")
+                    console.log(" asyncdeviceID null ")
+                    const processBackGroundConnected = { device_id: asyncdeviceID, description: " asyncdeviceID null !" }
+                    await api.post("monitoring/logTeste", "data=" + JSON.stringify(processBackGroundConnected))
                 }
             } catch (err) {
                 console.log("compareID" + err);
                 const logTesteCID = { device_id: asyncdeviceID, description: err }
                 var { data: returnData } = await api.post("monitoring/logTeste", "data=" + JSON.stringify(logTesteCID))
             }
+
         } else {
             //desconecta device T1S
             console.log("Não é hora de fazer a medição, bye!")
@@ -277,10 +302,12 @@ export default class HomeScreen extends PureComponent {
     processBackgroundMeasurement = async () => {
 
         await this.toggleSwitchAutoMedicao(true)
+        //Permissao para rodar background
+        await this.requestLocationPermission()
 
         let options = {
-            taskName: 'Example',
-            taskTitle: 'Medição em segundo plano',
+            taskName: 'IC',
+            taskTitle: 'Instant Check está ativo no momento.',
             taskDesc: '',
             taskIcon: {
                 name: 'ic_launcher',
@@ -289,9 +316,10 @@ export default class HomeScreen extends PureComponent {
             color: '#000080',
             linkingURI: 'exampleScheme://chat/jane',
             parameters: {
-                delay: 1200000,
-                //delay:  300000,
-                //delay:  180000,
+                // delay: 1200000,
+                // delay:  300000,
+                   delay:  180000,
+                //delay: 60000,
             },
         }
 
@@ -326,7 +354,7 @@ export default class HomeScreen extends PureComponent {
             for (let i = 0; BackgroundJob.isRunning(); i++) {
                 console.log('Runned -> ', i);
                 //await BackgroundJob.updateNotification({ taskDesc: 'Instant Check Ativo no momento.' + i });
-                await BackgroundJob.updateNotification({ taskDesc: 'Instant Check está ativo no momento' });
+                await BackgroundJob.updateNotification({ taskDesc: '' + i });
                 await sleep(delay);
                 await this.connectBackgroundMeasurement();
             }
@@ -352,7 +380,7 @@ export default class HomeScreen extends PureComponent {
 
     getBluetoothScanPermission = async () => {
         const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
             {
                 title: 'Permissão Bluetooth',
                 message:
@@ -371,6 +399,34 @@ export default class HomeScreen extends PureComponent {
         }
     }
 
+    requestLocationPermission = async () => { 
+        try {
+            let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+                {
+                    title: 'Permissão para usar a localização',
+                    //message: 'O aplicativo precisa de permissão para utilizar a sua localização',
+                    message: '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
+                        'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
+                        'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
+                        'Deseja ativar ?',
+                    buttonNegative: 'Cancelar',
+                    buttonPositive: 'Sim',
+                });
+
+                console.log("ACCESS_BACKGROUND_LOCATION",granted);
+
+            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
+            } else {
+                console.log("PermissionsAndroid.RESULTS.GRANTED = NOT PERMISSION");
+            }
+        } catch (error) {
+            console.log(error);
+        }
+        
+    }
+
+    /*
     requestLocationPermission = async () => {
         try {
             let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -405,6 +461,7 @@ export default class HomeScreen extends PureComponent {
             // locationTracking(dispatch, getState, geolocationSettings)
         })
     }
+*/
 
     requestBackgroundLocation = async () => {
 
@@ -503,8 +560,8 @@ export default class HomeScreen extends PureComponent {
         //console.log("check getBluetoothScanPermission access permission...")
         await this.getBluetoothScanPermission()
 
-        console.log("check requestLocationPermission access permission...")
-        await this.requestLocationPermission()
+        //console.log("check requestLocationPermission access permission...")
+        //await this.requestLocationPermission()
 
         await this.permissionsFotos()
 
@@ -542,6 +599,7 @@ export default class HomeScreen extends PureComponent {
 
     // oneSignal
     oneSignal = async () => {
+        console.log("oneSignal");
         try {
             await OneSignal.init("6d02ccd7-05bb-4089-9d66-58caa11080a4", { kOSSettingsKeyAutoPrompt: true });
             await OneSignal.addEventListener('received', this.onReceived);
@@ -570,8 +628,8 @@ export default class HomeScreen extends PureComponent {
 
     // oneSignal
     onIds = async (deviceOneSignal) => {
-        // console.log('Device info: ', deviceOneSignal);
-        // console.log('player id: ', deviceOneSignal.userId);
+         // console.log('Device info: ', deviceOneSignal);
+         console.log('player id: ', deviceOneSignal.userId);
 
         // recupera o id do paciente logado
         let id_patient = await AsyncStorage.getItem("id_patient")
@@ -579,6 +637,7 @@ export default class HomeScreen extends PureComponent {
 
         // recupera id do relogio/device
         let asyncdeviceID = await AsyncStorage.getItem("id_device")
+        asyncdeviceID = asyncdeviceID.replace(/[\\"]/g, '')
 
         //API para atualizar o codigo do ONESIGNAL do paciente
         try {
@@ -733,7 +792,6 @@ export default class HomeScreen extends PureComponent {
             this.setState({ deviceDados: device })
 
             //Salvando o id device no registro do usuário
-
             await AsyncStorage.setItem('asyncdeviceID', device.id)
             // recupera o id do paciente logado                
             await this.oneSignal()
@@ -1187,6 +1245,7 @@ export default class HomeScreen extends PureComponent {
     }
 
     sendNotificationMeasure = async (device, codigomensagem, frequenciaCardiaca, oxigenio, hiperTensao, hipoTensao, temperatura) => {
+        console.log("sendNotificationMeasure",codigomensagem)
         try {
             let id_patient = await AsyncStorage.getItem('id_patient')
             let nomePaciente = await AsyncStorage.getItem('nome')
@@ -1568,7 +1627,7 @@ export default class HomeScreen extends PureComponent {
                                         marginTop: 20,
                                         marginLeft: 30,
 
-                                        width: 120,
+                                        width: 150,
                                         height: 130,
 
                                         borderRightColor: "#397bfc",
@@ -1592,16 +1651,16 @@ export default class HomeScreen extends PureComponent {
                                         alignSelf: "center",
                                     }}>
                                         <View >
-                                        <Image
-                                            source={require('../../assets/login.png')}
-                                            style={{
-                                                height: 55,
-                                                alignContent: "center",
-                                                alignItems: "center",
-                                                alignSelf: "center",
-                                                marginTop: 15
-                                            }} />
-                                        {/* 
+                                            <Image
+                                                source={require('../../assets/login.png')}
+                                                style={{
+                                                    height: 55,
+                                                    alignContent: "center",
+                                                    alignItems: "center",
+                                                    alignSelf: "center",
+                                                    marginTop: 15
+                                                }} />
+                                            {/* 
                                             <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock-open"} size={50} color="navy" /> </Text> */}
                                             <Text style={styles.textTextDescricao} >  Login Automático  </Text>
                                             <Text style={{
@@ -1626,7 +1685,7 @@ export default class HomeScreen extends PureComponent {
                                         marginTop: 20,
                                         marginLeft: 30,
 
-                                        width: 120,
+                                        width: 150,
                                         height: 130,
 
                                         borderRightColor: "#397bfc",
@@ -1650,16 +1709,16 @@ export default class HomeScreen extends PureComponent {
                                         alignSelf: "center",
                                     }}>
                                         <View >
-                                        <Image
-                                            source={require('../../assets/login.png')}
-                                            style={{
-                                                height: 55,
-                                                alignContent: "center",
-                                                alignItems: "center",
-                                                alignSelf: "center",
-                                                marginTop: 15
-                                            }} />
-                                        {/*
+                                            <Image
+                                                source={require('../../assets/login.png')}
+                                                style={{
+                                                    height: 55,
+                                                    alignContent: "center",
+                                                    alignItems: "center",
+                                                    alignSelf: "center",
+                                                    marginTop: 15
+                                                }} />
+                                            {/*
                                             <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"lock"} size={50} color="navy" /> </Text> */}
                                             <Text style={styles.textTextDescricao} >  Login Automático </Text>
                                             <Text style={{
@@ -1677,14 +1736,14 @@ export default class HomeScreen extends PureComponent {
                             <TouchableOpacity onPress={() => this.props.navigation.navigate("Opcoes")}>
                                 <View style={styles.cardBorderMenu}>
                                     <View >
-                                    <Image
+                                        <Image
                                             source={require('../../assets/opcoes.png')}
                                             style={{
-                                                 marginTop: 10,
-                                                 marginLeft: 20,
-                                                 alignContent: "center",
-                                                 alignItems: "center",
-                                                 alignSelf: "center",
+                                                marginTop: 10,
+                                                marginLeft: 20,
+                                                alignContent: "center",
+                                                alignItems: "center",
+                                                alignSelf: "center",
                                             }} />
                                         {/*
                                         <Text style={styles.titleTextBodyMenu} > <FontAwesome5 name={"user-cog"} size={50} color="navy" /> </Text> */}
@@ -2048,6 +2107,17 @@ export default class HomeScreen extends PureComponent {
                                         <View style={styles.cardBorder}>
                                             <View >
                                                 {/*  <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"heartbeat"} size={30} color="navy" /> </Text> */}
+                                                <Image
+                                                    source={require('../../assets/IC-BATIMENTO.png')}
+                                                    resizeMode="contain"
+                                                    style={{
+                                                        marginTop: 10,
+                                                        alignContent: "center",
+                                                        alignItems: "center",
+                                                        alignSelf: "center",
+                                                        height: 50
+                                                    }}
+                                                />
                                                 <Text style={styles.textTextDescricao} > Frequência Cardíaca </Text>
                                                 <Text style={styles.titleTextTitulo}> ( bpm )</Text>
                                                 <Text style={styles.textText} >{this.state.frequenciaCardiaca}</Text>
@@ -2059,6 +2129,17 @@ export default class HomeScreen extends PureComponent {
                                     <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
+                                                <Image
+                                                    source={require('../../assets/IC-PRESSAO.png')}
+                                                    resizeMode="contain"
+                                                    style={{
+                                                        marginTop: 10,
+                                                        alignContent: "center",
+                                                        alignItems: "center",
+                                                        alignSelf: "center",
+                                                        height: 50
+                                                    }}
+                                                />
                                                 {/* <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"stethoscope"} size={30} color="navy" /> </Text> */}
                                                 <Text style={styles.textTextDescricao} > Pressão arterial </Text>
                                                 <Text style={styles.titleTextTitulo}> ( mmhg )</Text>
@@ -2071,15 +2152,25 @@ export default class HomeScreen extends PureComponent {
                                 </View>
 
                                 <View style={{ flexDirection: "row", justifyContent: "center" }}>
-
                                     <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
+                                                <Image
+                                                    source={require('../../assets/IC-O2.png')}
+                                                    resizeMode="contain"
+                                                    style={{
+                                                        marginTop: 10,
+                                                        alignContent: "center",
+                                                        alignItems: "center",
+                                                        alignSelf: "center",
+                                                        height: 50
+                                                    }}
+                                                />
                                                 {/* <Text style={styles.titleTextTitulo} > <FontAwesome5 name={"tint"} size={30} color="navy" /> </Text> */}
                                                 <Text style={styles.textTextDescricao} > Saturação do oxigênio </Text>
                                                 <Text style={styles.titleTextTitulo}>( SpO2 % )</Text>
                                                 <Text style={styles.textText} >{this.state.oxigenio}</Text>
-                                                <Text style={styles.textTextDescricao} >{this.state.oxigenio > '90' ? "Normal" : "Atenção"}   </Text>
+                                                {/* <Text style={styles.textTextDescricao} >{this.state.oxigenio > '90' ? "Normal" : "Atenção"}   </Text> */}
 
                                             </View>
                                         </View>
@@ -2088,10 +2179,21 @@ export default class HomeScreen extends PureComponent {
                                     <TouchableOpacity >
                                         <View style={styles.cardBorder}>
                                             <View >
+                                                <Image
+                                                    source={require('../../assets/IC-TEMPERATURA.png')}
+                                                    resizeMode="contain"
+                                                    style={{
+                                                        marginTop: 10,
+                                                        alignContent: "center",
+                                                        alignItems: "center",
+                                                        alignSelf: "center",
+                                                        height: 50
+                                                    }}
+                                                />
                                                 <Text style={styles.textTextDescricao} > Temperatura  </Text>
                                                 <Text style={styles.titleTextTitulo}>( °C ) </Text>
                                                 <Text style={styles.textText} >{this.state.temperatura}</Text>
-                                                <Text style={styles.textTextDescricao} >{this.state.temperatura > '38' ? "Atenção" : "Normal"}   </Text>
+                                                {/* <Text style={styles.textTextDescricao} >{this.state.temperatura > '38' ? "Atenção" : "Normal"}   </Text> */}
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -2446,23 +2548,23 @@ const styles = StyleSheet.create({
         marginLeft: 10,
 
         width: 133,
-        height: 160,
+        height: 180,
 
-        borderColor: "gray",
-        borderWidth: 1,
+        borderRightColor: "#397bfc",
+        borderRightWidth: 3,
+        borderBottomColor: "#397bfc",
+        borderBottomWidth: 3,
 
-        borderRadius: 0,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        borderBottomLeftRadius: 10,
+        borderBottomRightRadius: 10,
 
-        borderBottomWidth: 0,
-        shadowColor: 'yellow',
+        shadowColor: '#397bfc',
         shadowOffset: { width: 50, height: 50 },
         shadowOpacity: 3,
-        shadowRadius: 10,
-        elevation: 15,
+        shadowRadius: 50,
+        //elevation: 17,
 
         alignContent: "center",
         alignItems: "center",
@@ -2479,7 +2581,7 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginLeft: 30,
 
-        width: 120,
+        width: 150,
         height: 130,
 
         // borderColor: "#fff",
