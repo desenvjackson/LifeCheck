@@ -132,8 +132,8 @@ android {
         applicationId "com.nsinstantcheck"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "0.0.11"
+        versionCode 12
+        versionName "0.0.12"
         // Enabling multidex support.
         multiDexEnabled true
         missingDimensionStrategy 'react-native-camera', 'general'

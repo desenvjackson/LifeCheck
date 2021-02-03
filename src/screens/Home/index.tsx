@@ -185,20 +185,18 @@ export default class HomeScreen extends PureComponent {
 
     }
 
-    ativarMedicaoSegundoPlano = async () => {
 
+    ativarMedicaoSegundoPlano = async () => {
         Alert.alert(
-            'INSTANT CHECK',
-            '\nO monitoramento automático coleta de forma autônoma seus dados vitais.\n\n' +
-            'Deseja ativar o monitoramento automático em segundo plano ?',
+            'Permissão para usar a localização',
+            '\nO INSTANT CHECK coleta dados local para localizar o Bracelete Inteligente e realizar as medições em segundo plano.\n\n' +
+            'Mesmo quando o aplicativo está fechado ou não está em uso.\n\n' +
+            'Serviços que usam a localização em segundo plano:\n\nBluetooth\n\n' +
+            'Deseja ativar ?',
             [
                 {
                     text: 'Desativar',
                     onPress: () => { this.stopBackGround() }
-                },
-                {
-                    text: 'Não',
-                    onPress: () => { this.stopBackGround() },
                 },
                 {
                     text: 'Sim',
@@ -207,7 +205,6 @@ export default class HomeScreen extends PureComponent {
             ],
             { cancelable: false },
         );
-
     }
 
     connectBackgroundMeasurement = async () => {
@@ -402,18 +399,16 @@ export default class HomeScreen extends PureComponent {
     requestLocationPermission = async () => { 
         try {
             let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
-                {
+            {
                     title: 'Permissão para usar a localização',
-                    //message: 'O aplicativo precisa de permissão para utilizar a sua localização',
-                    message: '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
+                    message: 'O aplicativo precisa de permissão para utilizar a sua localização'+ 
                         'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
-                        'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
-                        'Deseja ativar ?',
+                        'Serviços que usam a localização em segundo plano: Bluetooth \n\n' ,
                     buttonNegative: 'Cancelar',
-                    buttonPositive: 'Sim',
-                });
+                    buttonPositive: 'Sim',                    
 
-                console.log("ACCESS_BACKGROUND_LOCATION",granted);
+            });
+                
 
             if (granted === PermissionsAndroid.RESULTS.GRANTED) {
                 console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
@@ -425,43 +420,6 @@ export default class HomeScreen extends PureComponent {
         }
         
     }
-
-    /*
-    requestLocationPermission = async () => {
-        try {
-            let granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-                {
-                    title: 'Permissão para usar a localização',
-                    //message: 'O aplicativo precisa de permissão para utilizar a sua localização',
-                    message: '\nO INSTANT CHECK coleta dados de local para ativar o [ Bluetooth ], ' +
-                        'mesmo quando o aplicativo está fechado ou não está em uso. \n\n' +
-                        'Serviços que usam a localização em segundo plano: Bluetooth \n\n' +
-                        'Deseja ativar ?',
-                    buttonNegative: 'Cancelar',
-                    buttonPositive: 'Sim',
-                });
-            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-                console.log("PermissionsAndroid.RESULTS.GRANTED = OK");
-            } else {
-                console.log("PermissionsAndroid.RESULTS.GRANTED = NOT PERMISSION");
-            }
-        } catch (error) {
-            console.log(error);
-        }
-
-        LocationServicesDialogBox.checkLocationServicesIsEnabled({
-            message: "<h2> Permissão para Ativar Localização GPS.</h2> \
-                          Ativar a localização do GPS é necessária para o Bluetooth se conectar ao relógio e realizar as medições em segundo plano.<br/><br/>\
-                          IMPORTANTE: Não usaremos sua localização atual atráves do GPS. Somente o serviço de Bluetooth usará para localizar o relógio.<br/><br/>\
-                          Uma janela de notificação ficará aberta enquanto o modo de medição em segundo plano estiver ativo. <br/><br/>\
-                          Ativar o GPS ?<br/><br/>",
-            ok: "SIM",
-            cancel: "Não"
-        }).then(() => {
-            // locationTracking(dispatch, getState, geolocationSettings)
-        })
-    }
-*/
 
     requestBackgroundLocation = async () => {
 
