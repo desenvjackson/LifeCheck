@@ -1,4 +1,4 @@
-# **InstantCheck**
+# **LifeCheck**
 
 Monitoramento do usuário temperatura, pressão e outros, enviar um alerta para o usuário indicando as variações
 
